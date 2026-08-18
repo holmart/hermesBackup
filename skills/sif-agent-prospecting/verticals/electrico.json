@@ -1,0 +1,65 @@
+{
+  "id": "electrico",
+  "name": "Servicios Eléctricos e Instalaciones",
+  "description": "Empresas de mantenimiento eléctrico, instalaciones, redes, tableros y automatización en Colombia",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": true,
+
+  "cities": [
+    "Bogota", "Medellin", "Cali", "Barranquilla", "Bucaramanga",
+    "Cartagena", "Pereira", "Manizales", "Ibague", "Villavicencio",
+    "Santa Marta", "Cucuta", "Neiva", "Armenia", "Popayan"
+  ],
+
+  "search": {
+    "fallback_queries": [
+      "empresa mantenimiento electrico {city} Colombia",
+      "instalaciones electricas industriales {city}",
+      "servicio tecnico electrico empresas {city}",
+      "empresa electricista certificada {city} Colombia",
+      "mantenimiento redes electricas {city}",
+      "automatizacion electrica industrial {city}",
+      "tableros electricos mantenimiento {city} Colombia",
+      "empresa RETIE certificada {city}"
+    ],
+    "llm_context": "Buscar empresas que prestan servicios eléctricos: mantenimiento eléctrico industrial/comercial, instalaciones, cableado estructurado, tableros eléctricos, automatización, certificaciones RETIE/RETILAP. Nichos: edificios, fábricas, centros comerciales, conjuntos residenciales, hospitales, infraestructura.",
+    "num_queries": 4
+  },
+
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+
+  "extraction": {
+    "service_keywords": [
+      "instalaciones eléctricas", "instalaciones electricas",
+      "mantenimiento eléctrico", "mantenimiento electrico",
+      "tableros eléctricos", "tableros electricos",
+      "automatización", "automatizacion",
+      "cableado estructurado", "redes eléctricas", "redes electricas",
+      "RETIE", "RETILAP", "subestaciones",
+      "iluminación", "iluminacion", "media tensión", "baja tensión",
+      "puesta a tierra", "apantallamiento",
+      "mantenimiento preventivo", "mantenimiento correctivo"
+    ],
+    "blocked_domains_extra": [
+      "homecenter.com.co", "mercadolibre.com.co",
+      "enel.com.co", "celsia.com", "epm.com.co",
+      "codensa.com.co", "electricaribe.com"
+    ]
+  },
+
+  "validation": {
+    "llm_context": "Empresa que PRESTA servicios eléctricos (instalación, mantenimiento, reparación) en Colombia. NO debe ser: una comercializadora de energía (Enel, EPM, Celsia), una ferretería, ni una tienda de materiales eléctricos. Debe ser una empresa de SERVICIOS técnicos eléctricos.",
+    "disqualify_keywords": ["comercializadora de energía", "ferretería", "venta de materiales"]
+  },
+
+  "telegram_report": {
+    "emoji": "⚡",
+    "title": "Leads Servicios Eléctricos"
+  }
+}

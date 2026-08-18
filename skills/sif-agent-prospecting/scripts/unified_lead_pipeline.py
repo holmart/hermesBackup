@@ -1,0 +1,1048 @@
+#!/usr/bin/env python3
+"""
+Unified Lead Generation Pipeline for SIF Agent — v5 (Multi-Vertical + LLM)
+============================================================================
+New in v5:
+- Multi-vertical support via JSON config files (verticals/*.json)
+- LLM-powered smart query generation (adapts searches each run)
+- LLM-powered lead validation (rejects false positives, suggests pitch)
+- Graceful fallback when LLM is unavailable
+- Easy to add new verticals: just create a JSON file
+
+Architecture:
+- verticals/*.json define what to search, how to score, how to validate
+- Pipeline loads active verticals and runs each one sequentially
+- LLM calls are optional enhancements (pipeline works without them)
+
+Designed to run daily via cron on EC2.
+"""
+
+import subprocess
+import re
+import json
+import csv
+import os
+import sys
+import time
+import random
+import urllib.request
+import urllib.error
+from datetime import datetime, timezone, timedelta
+from urllib.parse import quote_plus, urlparse, urljoin
+from typing import Optional, Dict, List, Set
+from pathlib import Path
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+HERMES_HOME = os.environ.get("HERMES_HOME", "/home/ubuntu/.hermes")
+LEADS_DIR = os.path.join(HERMES_HOME, "leads")
+LEADS_CSV = os.path.join(LEADS_DIR, "fumigation_leads_enriched.csv")
+LOG_FILE = os.path.join(LEADS_DIR, "pipeline.log")
+STATE_FILE = os.path.join(LEADS_DIR, "pipeline_state.json")
+
+# Verticals config directory (relative to this script)
+SCRIPT_DIR = Path(__file__).parent.resolve()
+VERTICALS_DIR = SCRIPT_DIR.parent / "verticals"
+
+AWS_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_ALLOWED_USERS", "").split(",")[0].strip()
+
+# LLM Config
+LLM_API_BASE = os.environ.get("LLM_API_BASE", "https://openrouter.ai/api/v1")
+LLM_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+LLM_MODEL = os.environ.get("LLM_MODEL", "openai/gpt-4o-mini")
+
+LOG_MAX_LINES = 5000
+KNOWN_DOMAINS_TTL_DAYS = 30
+MAX_LEADS_PER_RUN = 15
+
+BLOCKED_DOMAINS_GLOBAL = {
+    "bing.com", "microsoft.com", "google.com", "youtube.com", "facebook.com",
+    "twitter.com", "instagram.com", "linkedin.com", "amazon.com", "wikipedia.org",
+    "mercadolibre.com", "olx.com", "reddit.com", "pinterest.com",
+    "eltiempo.com", "semana.com", "caracol.com.co", "rcn.com.co",
+    "publimetro.co", "googlesyndication.com", "doubleclick.net",
+    "rentokil.com", "terminix.com",
+    "empresite.eleconomistaamerica.co", "paginasamarillas.com.co",
+    "equipmaster.com.co", "condustrial.com.co",
+    "infoisinfo.com.co", "cylex.com.co",
+    "initial.com",
+}
+
+COLOMBIAN_TLDS = (".co", ".com.co", ".org.co", ".net.co")
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
+]
+
+BOT_CHALLENGE_PHRASES = [
+    "please complete the following challenge", "unusual traffic",
+    "are you a robot", "verify you are a human", "¿eres un robot?",
+    "please enable javascript", "access denied", "bot detection",
+    "pardon the interruption", "request blocked",
+]
+
+PERSON_NAME_BLACKLIST = {
+    "control", "plagas", "fumigacion", "fumigación", "servicio", "servicios",
+    "empresa", "empresas", "colombia", "bogota", "bogotá", "medellin", "medellín",
+    "cali", "barranquilla", "cartagena", "pereira", "manizales", "ibague",
+    "villavicencio", "santa", "marta", "cucuta", "neiva", "armenia", "popayan",
+    "restaurante", "hotel", "edificio", "residencial", "comercial", "industrial",
+    "sanitizacion", "desinfeccion", "desratizacion", "fumigaciones",
+    "certificado", "contacto", "nosotros", "quienes", "somos", "equipo",
+    "inicio", "home", "about", "limpieza", "aseo", "lavado", "mantenimiento",
+    "soluciones", "profesionales", "termitas", "roedores", "insectos",
+}
+
+PLACEHOLDER_EMAIL_DOMAINS = {
+    "empresa.com", "example.com", "test.com", "correo.com", "mail.com",
+    "email.com", "domain.com", "tu-dominio.com", "tudominio.com",
+    "sampleemail.com", "yourcompany.com",
+}
+
+
+# =============================================================================
+# VERTICAL LOADING
+# =============================================================================
+
+def load_verticals() -> List[Dict]:
+    """Load all active vertical configurations from verticals/*.json."""
+    verticals = []
+    if not VERTICALS_DIR.exists():
+        log(f"WARNING: Verticals directory not found: {VERTICALS_DIR}")
+        return verticals
+
+    for f in sorted(VERTICALS_DIR.glob("*.json")):
+        if f.name.startswith("_"):
+            continue  # Skip templates
+        try:
+            with open(f, "r", encoding="utf-8") as fh:
+                config = json.load(fh)
+            if config.get("active", False):
+                verticals.append(config)
+                log(f"  Loaded vertical: {config['name']} ({config['id']})")
+        except Exception as e:
+            log(f"  ERROR loading vertical {f.name}: {e}")
+
+    return verticals
+
+
+# =============================================================================
+# LLM UTILITIES
+# =============================================================================
+
+def call_llm(prompt: str, max_tokens: int = 300, temperature: float = 0.7) -> Optional[str]:
+    """Call LLM via OpenRouter API. Returns None on any failure."""
+    if not LLM_API_KEY:
+        return None
+
+    payload = json.dumps({
+        "model": LLM_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{LLM_API_BASE}/chat/completions",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {LLM_API_KEY}",
+            "Content-Type": "application/json",
+        }
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read())
+            return data["choices"][0]["message"]["content"].strip()
+    except (urllib.error.URLError, urllib.error.HTTPError, Exception) as e:
+        log(f"  LLM call failed: {e}")
+        return None
+
+
+def generate_smart_queries(city: str, vertical: Dict, known_domains: List[str]) -> List[str]:
+    """Use LLM to generate creative search queries. Falls back to templates."""
+    search_cfg = vertical.get("search", {})
+    llm_context = search_cfg.get("llm_context", "")
+    num_queries = search_cfg.get("num_queries", 4)
+    fallback_queries = search_cfg.get("fallback_queries", [])
+
+    # Try LLM first
+    if LLM_API_KEY and llm_context:
+        recent_domains = known_domains[-15:] if known_domains else []
+        prompt = f"""Genera {num_queries} queries de búsqueda en Google para encontrar empresas en {city}, Colombia.
+
+Sector: {llm_context}
+
+Dominios que ya conozco (varía para no repetir): {', '.join(recent_domains[:10]) if recent_domains else 'ninguno aún'}
+
+Reglas:
+- Queries en español, naturales, como buscaría un humano
+- Varía enfoques: por nicho de cliente, por certificación, por servicio específico, por zona de la ciudad
+- NO uses comillas, operadores, ni símbolos especiales
+- Cada query en una línea separada, sin números ni bullets
+- Sé creativo, no repitas las mismas estructuras
+
+Responde SOLO con las {num_queries} queries, una por línea:"""
+
+        response = call_llm(prompt, max_tokens=200, temperature=0.9)
+        if response:
+            queries = [q.strip() for q in response.split("\n") if q.strip() and len(q.strip()) > 10]
+            queries = [q.lstrip("0123456789.-) ") for q in queries]  # Clean numbering
+            if len(queries) >= 2:
+                log(f"  LLM generó {len(queries)} queries inteligentes")
+                return queries[:num_queries]
+
+    # Fallback to templates
+    if fallback_queries:
+        selected = random.sample(fallback_queries, min(num_queries, len(fallback_queries)))
+        return [q.format(city=city) for q in selected]
+
+    return [f"empresa {vertical['id']} {city} Colombia"]
+
+
+def validate_lead_with_llm(lead: Dict, vertical: Dict) -> Dict:
+    """Use LLM to validate and enhance a lead. Returns lead with possible modifications."""
+    validation_cfg = vertical.get("validation", {})
+    llm_context = validation_cfg.get("llm_context", "")
+
+    if not LLM_API_KEY or not llm_context:
+        return lead
+
+    prompt = f"""Analiza este lead y responde en JSON puro (sin markdown, sin backticks):
+
+Sector esperado: {llm_context}
+Empresa: {lead.get('company_name', '')}
+Dominio: {lead.get('domain', '')}
+Teléfono: {lead.get('phone', '')}
+Email: {lead.get('email', '')}
+Contacto: {lead.get('contact_person', '')}
+Ciudad: {lead.get('city', '')}
+Servicios: {', '.join(lead.get('services', []))}
+
+Responde SOLO este JSON:
+{{"is_valid": true/false, "clean_name": "nombre corregido o el mismo", "reject_reason": "razón si is_valid=false, sino vacío", "pitch": "una frase corta sobre cómo abordar esta empresa"}}"""
+
+    response = call_llm(prompt, max_tokens=150, temperature=0.2)
+    if not response:
+        return lead
+
+    try:
+        # Handle potential markdown wrapping
+        clean = response.strip()
+        if clean.startswith("```"):
+            clean = "\n".join(clean.split("\n")[1:-1])
+        validation = json.loads(clean)
+
+        if not validation.get("is_valid", True):
+            lead["score"] = 1
+            lead["reject_reason"] = validation.get("reject_reason", "LLM rejected")
+            log(f"    LLM rejected: {lead.get('domain', '')} — {validation.get('reject_reason', '')}")
+        else:
+            if validation.get("clean_name") and validation["clean_name"] != lead["company_name"]:
+                lead["company_name"] = validation["clean_name"]
+            if validation.get("pitch"):
+                lead["pitch"] = validation["pitch"]
+
+    except (json.JSONDecodeError, KeyError, TypeError):
+        pass  # LLM gave bad JSON, just skip validation
+
+    return lead
+
+
+# =============================================================================
+# CORE UTILITIES
+# =============================================================================
+
+def log(msg: str):
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] {msg}"
+    print(line)
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
+
+
+def rotate_log():
+    """Keep only the last LOG_MAX_LINES lines."""
+    try:
+        if not os.path.isfile(LOG_FILE):
+            return
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        if len(lines) > LOG_MAX_LINES:
+            with open(LOG_FILE, "w", encoding="utf-8") as f:
+                f.writelines(lines[-LOG_MAX_LINES:])
+    except Exception:
+        pass
+
+
+def load_state() -> Dict:
+    if os.path.isfile(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_state(state: Dict):
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def get_vertical_state(state: Dict, vertical_id: str) -> Dict:
+    """Get or create state for a specific vertical."""
+    verticals_state = state.setdefault("verticals", {})
+    return verticals_state.setdefault(vertical_id, {
+        "city_index": 0,
+        "known_domains": {},
+        "query_offset": 0,
+    })
+
+
+def expire_known_domains(vstate: Dict) -> None:
+    """Remove domains older than TTL. Migrates legacy list format."""
+    known = vstate.get("known_domains", {})
+    if isinstance(known, list):
+        now_iso = datetime.now(timezone.utc).isoformat()
+        known = {d: now_iso for d in known}
+        vstate["known_domains"] = known
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=KNOWN_DOMAINS_TTL_DAYS)).isoformat()
+    expired = [d for d, ts in known.items() if ts < cutoff]
+    for d in expired:
+        del known[d]
+    if expired:
+        log(f"  Expired {len(expired)} domains (>{KNOWN_DOMAINS_TTL_DAYS} days old)")
+
+
+def get_root_domain(url: str) -> str:
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+    except Exception:
+        return url
+
+
+def fetch_url(url: str, max_attempts: int = 3, timeout: int = 15) -> Optional[str]:
+    """Fetch URL with retries and bot detection."""
+    for attempt in range(1, max_attempts + 1):
+        ua = random.choice(USER_AGENTS)
+        cmd = [
+            "curl", "-s", "-L", "--max-time", str(timeout), "--compressed",
+            "-A", ua,
+            "-H", "accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "-H", "accept-language: es-CO,es;q=0.9,en;q=0.5",
+            "-H", "cache-control: no-cache",
+            url
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 5)
+            if result.returncode != 0:
+                time.sleep(2 ** attempt + random.uniform(0, 1))
+                continue
+            html = result.stdout
+            if any(phrase in html.lower() for phrase in BOT_CHALLENGE_PHRASES):
+                time.sleep(3 ** attempt + random.uniform(0, 2))
+                continue
+            return html
+        except (subprocess.TimeoutExpired, Exception):
+            time.sleep(2 ** attempt)
+    return None
+
+
+# =============================================================================
+# SEARCH PHASE
+# =============================================================================
+
+def extract_ddg_links(html: str) -> List[str]:
+    """Extract links from DuckDuckGo HTML."""
+    from urllib.parse import unquote
+    links = []
+    for encoded_url in re.findall(r"uddg=([^&\"']+)", html):
+        url = unquote(encoded_url)
+        if url.startswith("http"):
+            links.append(url)
+    if len(links) < 3:
+        for url in re.findall(r'href="(https?://[^"]+)"', html, re.IGNORECASE):
+            if "duckduckgo.com" not in url:
+                links.append(url)
+    return list(dict.fromkeys(links))  # Dedupe preserving order
+
+
+def is_relevant_domain(url: str, vertical: Dict) -> bool:
+    """Check if URL is relevant (not blocked, Colombian TLD)."""
+    try:
+        domain = get_root_domain(url)
+        blocked = BLOCKED_DOMAINS_GLOBAL | set(vertical.get("extraction", {}).get("blocked_domains_extra", []))
+        if any(b in domain for b in blocked):
+            return False
+        if any(domain.endswith(tld) for tld in COLOMBIAN_TLDS):
+            return True
+        if domain.endswith(".com") and len(domain.split(".")) <= 3:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def search_city(city: str, vertical: Dict, vstate: Dict) -> List[str]:
+    """Search DuckDuckGo, deduplicate by domain."""
+    known = set(vstate.get("known_domains", {}).keys()) if isinstance(vstate.get("known_domains"), dict) else set()
+    candidate_urls = []
+    seen_domains = set()
+
+    known_list = list(known)
+    queries = generate_smart_queries(city, vertical, known_list)
+
+    for query in queries:
+        search_url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
+        log(f"  Searching: {query}")
+
+        html = fetch_url(search_url)
+        if not html:
+            log(f"  Failed to fetch search results")
+            continue
+
+        links = extract_ddg_links(html)
+        for u in links:
+            domain = get_root_domain(u)
+            if not is_relevant_domain(u, vertical):
+                continue
+            if domain in known or domain in seen_domains:
+                continue
+            seen_domains.add(domain)
+            candidate_urls.append(u)
+
+        log(f"  Found {len(links)} links, {len(seen_domains)} new relevant domains")
+        time.sleep(random.uniform(4, 7))
+
+    log(f"Total unique domains to scrape: {len(candidate_urls)}")
+    return candidate_urls
+
+
+# =============================================================================
+# EXTRACTION PHASE
+# =============================================================================
+
+def is_repetitive_number(digits: str) -> bool:
+    if len(set(digits)) <= 2:
+        return True
+    if len(digits) >= 8:
+        pair = digits[:2]
+        if pair * (len(digits) // 2) == digits[:len(digits) // 2 * 2]:
+            return True
+    return False
+
+
+def validate_colombian_phone(raw: str) -> Optional[str]:
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("57") and len(digits) >= 12:
+        digits = digits[2:]
+    if len(digits) == 10 and digits.startswith("3"):
+        if is_repetitive_number(digits):
+            return None
+        return f"+57{digits}"
+    return None
+
+
+def extract_phones(html: str) -> List[str]:
+    patterns = [
+        r"(?:\+?57\s*)?3\d{2}[\s\-\.]?\d{3}[\s\-\.]?\d{4}",
+        r"(?:\(\+?57\))\s*3\d{2}[\s\-\.]?\d{3}[\s\-\.]?\d{4}",
+    ]
+    phones = set()
+    for pat in patterns:
+        for match in re.finditer(pat, html):
+            validated = validate_colombian_phone(match.group())
+            if validated:
+                phones.add(validated)
+    return list(phones)
+
+
+def is_valid_email(email: str) -> bool:
+    if not email or "@" not in email:
+        return False
+    prefix, domain = email.split("@", 1)
+    if domain in PLACEHOLDER_EMAIL_DOMAINS:
+        return False
+    if domain.endswith((".png", ".jpg", ".gif", ".css", ".js", ".svg")):
+        return False
+    if len(prefix) < 2 or prefix.isdigit():
+        return False
+    if prefix.lower() in {"noreply", "no-reply", "mailer", "postmaster", "webmaster", "test", "example", "demo"}:
+        return False
+    return True
+
+
+def extract_emails(html: str) -> List[str]:
+    pattern = r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}"
+    return [m.group().lower().strip(".") for m in re.finditer(pattern, html) if is_valid_email(m.group().lower().strip("."))]
+
+
+def extract_whatsapp(html: str) -> Optional[str]:
+    for pat in [r"wa\.me/(\d+)", r"api\.whatsapp\.com/send\?phone=(\d+)", r"whatsapp\.com/send\?phone=(\d+)"]:
+        match = re.search(pat, html)
+        if match:
+            number = match.group(1)
+            if number.startswith("57") and len(number) == 12 and not is_repetitive_number(number[2:]):
+                return f"+{number}"
+            if len(number) == 10 and number.startswith("3") and not is_repetitive_number(number):
+                return f"+57{number}"
+    return None
+
+
+def extract_person_name(html: str) -> Optional[str]:
+    patterns = [
+        r"(?:representante\s+legal|gerente\s+general|director\s+general|fundador|propietario|gerente)\s*[:\-]\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})",
+        r"(?:Ing\.|Dr\.|Dra\.|Sr\.|Sra\.)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,3})",
+    ]
+    for pat in patterns:
+        match = re.search(pat, html, re.IGNORECASE)
+        if match:
+            name = match.group(1).strip()
+            words = name.split()
+            if not (2 <= len(words) <= 4):
+                continue
+            if not all(w[0].isupper() for w in words):
+                continue
+            if {w.lower() for w in words} & PERSON_NAME_BLACKLIST:
+                continue
+            if any(len(w) < 3 or any(c.isdigit() for c in w) for w in words):
+                continue
+            return name
+    return None
+
+
+def clean_company_name(raw_title: str, url: str) -> str:
+    domain = get_root_domain(url)
+    domain_base = domain.split(".")[0].replace("-", " ").replace("_", " ")
+
+    generic = {"control", "servicio", "empresa", "colombia", "bogota", "fumigacion",
+               "plagas", "home", "www", "servicios", "fumigaciones", "desinfeccion"}
+
+    if domain_base.lower().replace(" ", "") not in generic and len(domain_base) >= 4:
+        name = domain_base.title()
+        if raw_title:
+            legal = re.search(r"([A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s]{2,30}(?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.?|E\.?S\.?P\.?))", raw_title)
+            if legal:
+                return legal.group(1).strip()
+        return name
+
+    if raw_title:
+        name = raw_title.strip()
+        legal = re.search(r"([A-ZÁÉÍÓÚÑ][a-záéíóúñA-ZÁÉÍÓÚÑ\s]{2,30}(?:S\.?A\.?S\.?|LTDA\.?|S\.?A\.?|E\.?S\.?P\.?))", name)
+        if legal:
+            return legal.group(1).strip()
+        for sep in [" | ", " – ", " - ", " :: ", " » ", " — "]:
+            if sep in name:
+                name = name.split(sep)[0].strip()
+                break
+        name = re.sub(r"\s*(?:en|de)\s+(?:Bogot[aá]|Medell[ií]n|Cali|Barranquilla|Colombia).*$", "", name, flags=re.IGNORECASE).strip()
+        name = re.sub(r"\s*(?:2024|2025|2026|2027)\s*$", "", name).strip()
+        name = re.sub(r"[^\w\s\-áéíóúñÁÉÍÓÚÑ]", "", name).strip()
+        if 3 < len(name) < 50:
+            return name
+
+    return domain_base.title()
+
+
+def detect_company_size(html: str) -> Optional[str]:
+    html_lower = html.lower()
+    for pat in [r"(\d+)\s*(?:técnicos|tecnicos|operarios|empleados|colaboradores)", r"equipo\s+de\s+(\d+)"]:
+        match = re.search(pat, html_lower)
+        if match:
+            num = int(match.group(1))
+            if 1 <= num <= 200:
+                if num <= 3: return "micro"
+                elif num <= 10: return "pequeña"
+                elif num <= 50: return "mediana"
+                else: return "grande"
+
+    signals = sum([
+        "sedes" in html_lower or "sucursales" in html_lower,
+        bool(re.search(r"cobertura\s+nacional", html_lower)),
+        len(re.findall(r"\+57\s*3\d{2}", html)) > 3,
+        "certificado iso" in html_lower or "iso 9001" in html_lower,
+    ])
+    if signals >= 3: return "mediana"
+    elif signals >= 1: return "pequeña"
+    return None
+
+
+def extract_services(html: str, vertical: Dict) -> List[str]:
+    keywords = vertical.get("extraction", {}).get("service_keywords", [])
+    html_lower = html.lower()
+    return [kw for kw in keywords if kw in html_lower]
+
+
+def extract_city_from_html(html: str) -> Optional[str]:
+    pat = r"(?:Bogot[aá]|Medell[ií]n|Cali|Barranquilla|Bucaramanga|Cartagena|Pereira|Manizales|Ibagu[eé]|Villavicencio|Santa Marta|C[uú]cuta|Neiva|Armenia|Popay[aá]n)"
+    match = re.search(pat, html, re.IGNORECASE)
+    return match.group().title() if match else None
+
+
+def scrape_company(url: str, vertical: Dict) -> Optional[Dict]:
+    """Visit company website + subpages, extract data."""
+    html = fetch_url(url, max_attempts=2, timeout=12)
+    if not html or len(html) < 200:
+        return None
+
+    base_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+    domain = get_root_domain(url)
+    all_html = html
+
+    for subpage in ["/contacto", "/contactanos", "/contact", "/nosotros", "/quienes-somos"]:
+        sub_html = fetch_url(urljoin(base_url, subpage), max_attempts=1, timeout=8)
+        if sub_html and len(sub_html) > 200:
+            all_html += "\n" + sub_html
+        time.sleep(random.uniform(0.5, 1.5))
+
+    raw_title = ""
+    title_match = re.search(r"<title[^>]*>([^<]+)</title>", html, re.IGNORECASE)
+    if title_match:
+        raw_title = title_match.group(1).strip()
+
+    phones = extract_phones(all_html)
+    emails = extract_emails(all_html)
+    whatsapp = extract_whatsapp(all_html)
+
+    if not phones and not emails:
+        return None
+
+    if not whatsapp and phones:
+        whatsapp = phones[0]
+
+    # Prioritize business emails
+    best_email = ""
+    if emails:
+        for prefix in ["gerencia", "gerente", "director", "admin", "comercial", "info", "contacto"]:
+            for email in emails:
+                if email.startswith(prefix):
+                    best_email = email
+                    break
+            if best_email:
+                break
+        if not best_email:
+            best_email = emails[0]
+
+    return {
+        "company_name": clean_company_name(raw_title, url),
+        "url": base_url + "/",
+        "domain": domain,
+        "phone": phones[0] if phones else "",
+        "all_phones": phones,
+        "email": best_email,
+        "all_emails": emails,
+        "whatsapp": whatsapp or "",
+        "services": extract_services(all_html, vertical),
+        "city": extract_city_from_html(all_html) or "",
+        "contact_person": extract_person_name(all_html) or "",
+        "company_size": detect_company_size(all_html) or "",
+        "instagram": "",
+    }
+
+
+# =============================================================================
+# DYNAMODB
+# =============================================================================
+
+def load_existing_domains(table: str) -> Set[str]:
+    """Single scan to get all existing domains from DynamoDB."""
+    domains = set()
+    start_key = None
+    while True:
+        cmd = ["aws", "dynamodb", "scan", "--table-name", table, "--region", AWS_REGION,
+               "--projection-expression", "Dominio,Website", "--select", "SPECIFIC_ATTRIBUTES"]
+        if start_key:
+            cmd.extend(["--exclusive-start-key", json.dumps(start_key)])
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                break
+            data = json.loads(result.stdout)
+            for item in data.get("Items", []):
+                d = item.get("Dominio", {}).get("S", "") or get_root_domain(item.get("Website", {}).get("S", ""))
+                if d:
+                    domains.add(d)
+            if not data.get("LastEvaluatedKey"):
+                break
+            start_key = data["LastEvaluatedKey"]
+        except Exception:
+            break
+    log(f"  Loaded {len(domains)} existing domains from CRM")
+    return domains
+
+
+def insert_lead(lead: Dict, table: str, vertical_id: str, max_retries: int = 3) -> bool:
+    """Insert lead into DynamoDB with retry."""
+    pk = lead["company_name"].upper().strip()
+    sk = f"LEAD-{int(time.time())}"
+    now = datetime.now(timezone.utc).isoformat()
+
+    item = {
+        "PK": {"S": pk}, "SK": {"S": sk},
+        "NombreComercial": {"S": lead["company_name"]},
+        "Website": {"S": lead["url"]},
+        "Dominio": {"S": lead.get("domain", "")},
+        "Telefono": {"S": lead.get("phone", "")},
+        "TelefonosExtra": {"S": ", ".join(lead.get("all_phones", []))},
+        "Email": {"S": lead.get("email", "")},
+        "EmailsExtra": {"S": ", ".join(lead.get("all_emails", []))},
+        "WhatsApp": {"S": lead.get("whatsapp", "")},
+        "Ciudad": {"S": lead.get("city", "")},
+        "Servicios": {"S": ", ".join(lead.get("services", []))},
+        "ContactoPrincipal": {"S": lead.get("contact_person", "")},
+        "TamanoEmpresa": {"S": lead.get("company_size", "")},
+        "Instagram": {"S": lead.get("instagram", "")},
+        "FechaIngreso": {"S": now},
+        "FuenteLead": {"S": f"pipeline_v5_{vertical_id}"},
+        "Estado": {"S": "nuevo"},
+        "Score": {"N": str(lead.get("score", 3))},
+        "Vertical": {"S": vertical_id},
+        "Pitch": {"S": lead.get("pitch", "")},
+    }
+    item = {k: v for k, v in item.items() if v.get("S", "x") != "" or v.get("N")}
+
+    cmd = ["aws", "dynamodb", "put-item", "--table-name", table, "--region", AWS_REGION,
+           "--item", json.dumps(item), "--condition-expression", "attribute_not_exists(PK)"]
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                return True
+            if "ConditionalCheckFailed" in (result.stderr or ""):
+                return False
+            if "Throughput" in (result.stderr or "") or "Throttl" in (result.stderr or ""):
+                time.sleep(2 ** attempt + random.uniform(0, 1))
+                continue
+            if attempt < max_retries:
+                time.sleep(2 ** attempt)
+                continue
+            return False
+        except Exception:
+            if attempt < max_retries:
+                time.sleep(2 ** attempt)
+            continue
+    return False
+
+
+# =============================================================================
+# SCORING
+# =============================================================================
+
+def score_lead(lead: Dict, vertical: Dict) -> int:
+    scoring = vertical.get("scoring", {})
+    score = 1.0
+
+    if lead.get("phone"): score += 1.0
+    if lead.get("email"): score += 1.0
+    if lead.get("contact_person"): score += 1.0
+    if lead.get("whatsapp") and not lead.get("phone"): score += 0.5
+
+    services = lead.get("services", [])
+    if len(services) >= scoring.get("bonus_services_threshold", 3):
+        score += scoring.get("bonus_services_score", 0.5)
+
+    size = lead.get("company_size", "")
+    if size in ("mediana", "grande"):
+        score += scoring.get("bonus_size_medium", 0.5)
+    elif size == "pequeña":
+        score += scoring.get("bonus_size_small", 0.25)
+
+    return min(5, max(1, int(round(score))))
+
+
+# =============================================================================
+# TELEGRAM
+# =============================================================================
+
+def send_telegram_report(leads: List[Dict], city: str, stats: Dict, vertical: Dict):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        log("Telegram not configured, skipping report")
+        return
+
+    report_cfg = vertical.get("telegram_report", {})
+    emoji = report_cfg.get("emoji", "🎯")
+    title = report_cfg.get("title", "Leads")
+
+    header = f"{emoji} *{title} — {datetime.now(timezone.utc).strftime('%Y-%m-%d')}*\n"
+    header += f"📍 Ciudad: *{city}*\n"
+    header += f"📊 Encontradas: {stats['found']} | Insertadas: {stats['inserted']} | Duplicadas: {stats['duplicates']}\n"
+    if stats.get("llm_validated"):
+        header += f"🤖 Validadas por LLM: {stats['llm_validated']}\n"
+    header += "\n"
+
+    body = ""
+    for i, lead in enumerate(leads[:5], 1):
+        stars = "⭐" * lead.get("score", 3)
+        body += f"*{i}. {lead['company_name']}* {stars}\n"
+        if lead.get("city"): body += f"   📍 {lead['city']}\n"
+        if lead.get("contact_person"): body += f"   👤 {lead['contact_person']}\n"
+        if lead.get("phone"): body += f"   📞 {lead['phone']}\n"
+        if lead.get("whatsapp"): body += f"   💬 [WhatsApp](https://wa.me/{lead['whatsapp'].replace('+', '')})\n"
+        if lead.get("email"): body += f"   📧 {lead['email']}\n"
+        if lead.get("pitch"): body += f"   💡 _{lead['pitch']}_\n"
+        if lead.get("services"): body += f"   🔧 {', '.join(lead['services'][:3])}\n"
+        body += f"   🌐 {lead['url']}\n\n"
+
+    if not leads:
+        body = "No se encontraron leads nuevas calificadas hoy.\n"
+
+    footer = f"\n_Próxima ciudad: {stats.get('next_city', 'N/A')}_"
+    message = header + body + footer
+
+    payload = json.dumps({
+        "chat_id": TELEGRAM_CHAT_ID, "text": message,
+        "parse_mode": "Markdown", "disable_web_page_preview": True,
+    })
+    cmd = ["curl", "-s", "-X", "POST", f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+           "-H", "Content-Type: application/json", "-d", payload]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        if result.returncode == 0:
+            resp = json.loads(result.stdout)
+            if resp.get("ok"):
+                log("Telegram report sent successfully")
+            else:
+                log(f"Telegram API error: {resp.get('description', 'unknown')}")
+    except Exception as e:
+        log(f"Telegram send error: {e}")
+
+
+# =============================================================================
+# PIPELINE PER VERTICAL
+# =============================================================================
+
+def run_vertical(vertical: Dict, state: Dict) -> Dict:
+    """Run the full pipeline for one vertical. Returns stats."""
+    vertical_id = vertical["id"]
+    table = vertical.get("dynamodb_table", "sifagent-crm-clients")
+    cities = vertical.get("cities", ["Bogota"])
+    min_score = vertical.get("scoring", {}).get("min_score", 3)
+
+    log(f"\n{'='*60}")
+    log(f"VERTICAL: {vertical['name']} ({vertical_id})")
+    log(f"{'='*60}")
+
+    vstate = get_vertical_state(state, vertical_id)
+    expire_known_domains(vstate)
+
+    city_index = vstate.get("city_index", 0) % len(cities)
+    city = cities[city_index]
+    next_city = cities[(city_index + 1) % len(cities)]
+
+    log(f"Target city: {city} (index {city_index})")
+
+    # PHASE 1: SEARCH
+    log("\n--- PHASE 1: SEARCH ---")
+    candidate_urls = search_city(city, vertical, vstate)
+
+    # PHASE 2: SCRAPE
+    log("\n--- PHASE 2: SCRAPE & EXTRACT ---")
+    enriched_leads = []
+    for url in candidate_urls[:MAX_LEADS_PER_RUN]:
+        log(f"  Scraping: {get_root_domain(url)}...")
+        lead_data = scrape_company(url, vertical)
+        if lead_data:
+            enriched_leads.append(lead_data)
+            log(f"    ✓ {lead_data['company_name']} | Ph: {lead_data.get('phone', '-')} | Em: {lead_data.get('email', '-')}")
+        else:
+            log(f"    ✗ No useful data")
+        time.sleep(random.uniform(1, 2))
+
+    log(f"Leads with contact data: {len(enriched_leads)}")
+
+    # PHASE 3: SCORE
+    log("\n--- PHASE 3: SCORE & FILTER ---")
+    for lead in enriched_leads:
+        lead["score"] = score_lead(lead, vertical)
+
+    enriched_leads.sort(key=lambda x: x["score"], reverse=True)
+    qualified_leads = [l for l in enriched_leads if l["score"] >= min_score]
+    log(f"Qualified leads (score >= {min_score}): {len(qualified_leads)}")
+
+    # PHASE 4: LLM VALIDATION (top leads only to save tokens)
+    log("\n--- PHASE 4: LLM VALIDATION ---")
+    llm_validated = 0
+    if LLM_API_KEY:
+        for lead in qualified_leads[:8]:  # Validate top 8 max
+            lead = validate_lead_with_llm(lead, vertical)
+            llm_validated += 1
+            time.sleep(0.5)  # Rate limit
+        # Re-filter after LLM may have lowered scores
+        qualified_leads = [l for l in qualified_leads if l["score"] >= min_score]
+        log(f"After LLM validation: {len(qualified_leads)} qualified")
+    else:
+        log("  LLM not configured, skipping validation")
+
+    # PHASE 5: INSERT TO CRM
+    log("\n--- PHASE 5: INSERT TO CRM ---")
+    existing_domains = load_existing_domains(table)
+    inserted = 0
+    duplicates = 0
+    for lead in qualified_leads:
+        domain = lead.get("domain", "")
+        if domain in existing_domains:
+            log(f"  Skip (exists): {lead['company_name']}")
+            duplicates += 1
+            continue
+        if insert_lead(lead, table, vertical_id):
+            inserted += 1
+            existing_domains.add(domain)
+            log(f"  ✓ Inserted: {lead['company_name']} (score {lead['score']})")
+        else:
+            duplicates += 1
+        time.sleep(0.5)
+
+    # PHASE 6: CSV
+    log("\n--- PHASE 6: SAVE CSV ---")
+    csv_exists = os.path.isfile(LEADS_CSV)
+    with open(LEADS_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not csv_exists:
+            writer.writerow(["timestamp", "vertical", "company_name", "domain", "phone", "email",
+                             "whatsapp", "city", "contact_person", "company_size", "services", "score", "pitch"])
+        for lead in qualified_leads:
+            writer.writerow([
+                datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                vertical_id, lead["company_name"], lead.get("domain", ""),
+                lead.get("phone", ""), lead.get("email", ""), lead.get("whatsapp", ""),
+                lead.get("city", city), lead.get("contact_person", ""),
+                lead.get("company_size", ""), "|".join(lead.get("services", [])),
+                lead.get("score", 3), lead.get("pitch", ""),
+            ])
+
+    # PHASE 7: TELEGRAM
+    log("\n--- PHASE 7: TELEGRAM REPORT ---")
+    stats = {
+        "found": len(enriched_leads), "inserted": inserted,
+        "duplicates": duplicates, "next_city": next_city,
+        "llm_validated": llm_validated,
+    }
+    send_telegram_report(qualified_leads, city, stats, vertical)
+
+    # Update vertical state
+    vstate["city_index"] = (city_index + 1) % len(cities)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    known = vstate.get("known_domains", {})
+    if isinstance(known, list):
+        known = {d: now_iso for d in known}
+    for url in candidate_urls[:MAX_LEADS_PER_RUN]:
+        known[get_root_domain(url)] = now_iso
+    for lead in enriched_leads:
+        if lead.get("domain"):
+            known[lead["domain"]] = now_iso
+    vstate["known_domains"] = known
+
+    log(f"\nVERTICAL COMPLETE — {vertical['name']}: Found={len(enriched_leads)} Inserted={inserted} Qualified={len(qualified_leads)}")
+    return stats
+
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+def main():
+    os.makedirs(LEADS_DIR, exist_ok=True)
+    rotate_log()
+
+    # Load .env
+    env_file = os.path.join(HERMES_HOME, ".env")
+    if os.path.isfile(env_file):
+        try:
+            with open(env_file, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, _, value = line.partition("=")
+                        key = key.strip()
+                        value = value.strip().strip('"').strip("'")
+                        if key and value and key not in os.environ:
+                            os.environ[key] = value
+        except Exception:
+            pass
+
+    # Reload env-dependent globals
+    global TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, LLM_API_KEY
+    TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", TELEGRAM_BOT_TOKEN)
+    TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_ALLOWED_USERS", TELEGRAM_CHAT_ID).split(",")[0].strip()
+    LLM_API_KEY = os.environ.get("OPENROUTER_API_KEY", LLM_API_KEY)
+
+    log("=" * 60)
+    log("UNIFIED LEAD PIPELINE v5 — Multi-Vertical + LLM")
+    log(f"LLM: {'enabled (' + LLM_MODEL + ')' if LLM_API_KEY else 'disabled (no API key)'}")
+    log("=" * 60)
+
+    # Parse --vertical argument
+    target_vertical = None
+    if "--vertical" in sys.argv:
+        idx = sys.argv.index("--vertical")
+        if idx + 1 < len(sys.argv):
+            target_vertical = sys.argv[idx + 1]
+            log(f"Running single vertical: {target_vertical}")
+
+    # Load verticals
+    log("\n--- LOADING VERTICALS ---")
+    verticals = load_verticals()
+    if not verticals:
+        log("ERROR: No active verticals found! Check verticals/*.json")
+        return 1
+
+    # Filter to target vertical if specified
+    if target_vertical:
+        verticals = [v for v in verticals if v["id"] == target_vertical]
+        if not verticals:
+            log(f"ERROR: Vertical '{target_vertical}' not found or not active!")
+            return 1
+
+    # Load global state
+    state = load_state()
+
+    # Run each active vertical
+    total_stats = {"found": 0, "inserted": 0, "duplicates": 0}
+    for vertical in verticals:
+        try:
+            stats = run_vertical(vertical, state)
+            total_stats["found"] += stats["found"]
+            total_stats["inserted"] += stats["inserted"]
+            total_stats["duplicates"] += stats["duplicates"]
+        except Exception as e:
+            log(f"ERROR in vertical {vertical['id']}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # Save state
+    save_state(state)
+
+    log("\n" + "=" * 60)
+    log(f"ALL VERTICALS COMPLETE — Found: {total_stats['found']} | Inserted: {total_stats['inserted']}")
+    log("=" * 60)
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Exception as e:
+        import traceback
+        log(f"FATAL ERROR: {e}")
+        traceback.print_exc()
+        sys.exit(1)

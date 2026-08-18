@@ -1,0 +1,46 @@
+{
+  "id": "mi_vertical",
+  "name": "Nombre de la Vertical",
+  "description": "Descripción corta de qué tipo de empresas buscar",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": false,
+
+  "cities": [
+    "Bogota", "Medellin", "Cali", "Barranquilla", "Bucaramanga"
+  ],
+
+  "search": {
+    "fallback_queries": [
+      "query template 1 {city} Colombia",
+      "query template 2 {city} Colombia",
+      "query template 3 {city}"
+    ],
+    "llm_context": "Contexto para que el LLM genere queries inteligentes. Describe el sector, nichos, y tipos de clientes objetivo.",
+    "num_queries": 4
+  },
+
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+
+  "extraction": {
+    "service_keywords": [
+      "keyword1", "keyword2", "keyword3"
+    ],
+    "blocked_domains_extra": []
+  },
+
+  "validation": {
+    "llm_context": "Contexto para validar si un lead pertenece realmente a esta vertical.",
+    "disqualify_keywords": ["palabra que descalifica"]
+  },
+
+  "telegram_report": {
+    "emoji": "🎯",
+    "title": "Leads Mi Vertical"
+  }
+}
