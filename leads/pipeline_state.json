@@ -162,7 +162,7 @@
   "query_offset": 3,
   "verticals": {
     "fumigacion": {
-      "city_index": 2,
+      "city_index": 3,
       "known_domains": {
         "duckduckgo.com": "2026-08-16T15:52:37.891582+00:00",
         "fumycontrol.co": "2026-08-16T15:52:37.891582+00:00",
@@ -193,7 +193,64 @@
         "papelmatic.com": "2026-08-17T13:04:07.869852+00:00",
         "hsrafaelsanjuan.gov.co": "2026-08-17T13:04:07.869852+00:00",
         "ilabora.com": "2026-08-17T13:04:07.869852+00:00",
-        "casalimpia.com": "2026-08-17T13:04:07.869852+00:00"
+        "casalimpia.com": "2026-08-17T13:04:07.869852+00:00",
+        "plusfumigaciones.com": "2026-08-18T13:04:05.748845+00:00",
+        "extinplagas.com.co": "2026-08-18T13:04:05.748845+00:00",
+        "controldeplagascali.com": "2026-08-18T13:04:05.748845+00:00",
+        "mip.com.co": "2026-08-18T13:04:05.748845+00:00",
+        "sanicontrol.com": "2026-08-18T13:04:05.748845+00:00",
+        "fuseincolcolombia.com": "2026-08-18T13:04:05.748845+00:00",
+        "limpiocolombia.com": "2026-08-18T13:04:05.748845+00:00",
+        "lavaclinicas.com": "2026-08-18T13:04:05.748845+00:00",
+        "aseamos.com.co": "2026-08-18T13:04:05.748845+00:00",
+        "eldirectorio.co": "2026-08-18T13:04:05.748845+00:00",
+        "controlintegralplagas.com": "2026-08-18T13:04:05.748845+00:00",
+        "previplagassas.com": "2026-08-18T13:04:05.748845+00:00",
+        "fumix.com.co": "2026-08-18T13:04:05.748845+00:00",
+        "planetacontrolplagas.com": "2026-08-18T13:04:05.748845+00:00",
+        "cleanservices.co": "2026-08-18T13:04:05.748845+00:00"
+      },
+      "query_offset": 0
+    },
+    "hvac": {
+      "city_index": 1,
+      "known_domains": {
+        "duckduckgo.com": "2026-08-18T13:33:18.499153+00:00",
+        "aireacondicionadosas.com": "2026-08-18T13:33:18.499153+00:00",
+        "airsolutionscolombia.com": "2026-08-18T13:33:18.499153+00:00",
+        "tecnicosbogota.com": "2026-08-18T13:33:18.499153+00:00",
+        "refriplast.com": "2026-08-18T13:33:18.499153+00:00",
+        "integra-smart.com": "2026-08-18T13:33:18.499153+00:00",
+        "eldirectorio.co": "2026-08-18T13:33:18.499153+00:00",
+        "aireflex.com": "2026-08-18T13:33:18.499153+00:00",
+        "ingenieriadeproyectos.com.co": "2026-08-18T13:33:18.499153+00:00",
+        "acomfort.com.co": "2026-08-18T13:33:18.499153+00:00",
+        "solucionesaircold.com.co": "2026-08-18T13:33:18.499153+00:00",
+        "kaligarirefrigeracion.com": "2026-08-18T13:33:18.499153+00:00",
+        "aceingenieria.com.co": "2026-08-18T13:33:18.499153+00:00",
+        "maxicold.co": "2026-08-18T13:33:18.499153+00:00",
+        "sefrio.com": "2026-08-18T13:33:18.499153+00:00"
+      },
+      "query_offset": 0
+    },
+    "electrico": {
+      "city_index": 1,
+      "known_domains": {
+        "santanaingenieria.com": "2026-08-18T14:04:04.308320+00:00",
+        "cieenergy.com": "2026-08-18T14:04:04.308320+00:00",
+        "toderoalinstante.com": "2026-08-18T14:04:04.308320+00:00",
+        "siergroup.com": "2026-08-18T14:04:04.308320+00:00",
+        "informacolombia.com": "2026-08-18T14:04:04.308320+00:00",
+        "eldirectorio.co": "2026-08-18T14:04:04.308320+00:00",
+        "enertedingenieria.com.co": "2026-08-18T14:04:04.308320+00:00",
+        "akuavila.com.co": "2026-08-18T14:04:04.308320+00:00",
+        "nvmtableros.com": "2026-08-18T14:04:04.308320+00:00",
+        "ingecomsas.com": "2026-08-18T14:04:04.308320+00:00",
+        "electricosfonseca.com": "2026-08-18T14:04:04.308320+00:00",
+        "engineering10.com": "2026-08-18T14:04:04.308320+00:00",
+        "intecsecolombia.com": "2026-08-18T14:04:04.308320+00:00",
+        "ispcolombia.com": "2026-08-18T14:04:04.308320+00:00",
+        "ingeniouselectric.com.co": "2026-08-18T14:04:04.308320+00:00"
       },
       "query_offset": 0
     }
