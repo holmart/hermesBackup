@@ -162,7 +162,7 @@
   "query_offset": 3,
   "verticals": {
     "fumigacion": {
-      "city_index": 3,
+      "city_index": 4,
       "known_domains": {
         "duckduckgo.com": "2026-08-16T15:52:37.891582+00:00",
         "fumycontrol.co": "2026-08-16T15:52:37.891582+00:00",
@@ -208,12 +208,25 @@
         "previplagassas.com": "2026-08-18T13:04:05.748845+00:00",
         "fumix.com.co": "2026-08-18T13:04:05.748845+00:00",
         "planetacontrolplagas.com": "2026-08-18T13:04:05.748845+00:00",
-        "cleanservices.co": "2026-08-18T13:04:05.748845+00:00"
+        "cleanservices.co": "2026-08-18T13:04:05.748845+00:00",
+        "fumigacionesenbarranquilla.com": "2026-08-19T13:03:51.206109+00:00",
+        "fumigaciones-barranquilla.com": "2026-08-19T13:03:51.206109+00:00",
+        "fumiaba.com": "2026-08-19T13:03:51.206109+00:00",
+        "todofumigacion.com.co": "2026-08-19T13:03:51.206109+00:00",
+        "fumigacionbarranquilla.com": "2026-08-19T13:03:51.206109+00:00",
+        "higienitechcleanbarranquilla.blogspot.com": "2026-08-19T13:03:51.206109+00:00",
+        "sanitek.com.co": "2026-08-19T13:03:51.206109+00:00",
+        "findglocal.com": "2026-08-19T13:03:51.206109+00:00",
+        "restrepogomez.com": "2026-08-19T13:03:51.206109+00:00",
+        "interplagassas.com": "2026-08-19T13:03:51.206109+00:00",
+        "grupogams.com": "2026-08-19T13:03:51.206109+00:00",
+        "fuminardelacosta.com": "2026-08-19T13:03:51.206109+00:00",
+        "seppsa.com": "2026-08-19T13:03:51.206109+00:00"
       },
       "query_offset": 0
     },
     "hvac": {
-      "city_index": 1,
+      "city_index": 2,
       "known_domains": {
         "duckduckgo.com": "2026-08-18T13:33:18.499153+00:00",
         "aireacondicionadosas.com": "2026-08-18T13:33:18.499153+00:00",
@@ -229,12 +242,27 @@
         "kaligarirefrigeracion.com": "2026-08-18T13:33:18.499153+00:00",
         "aceingenieria.com.co": "2026-08-18T13:33:18.499153+00:00",
         "maxicold.co": "2026-08-18T13:33:18.499153+00:00",
-        "sefrio.com": "2026-08-18T13:33:18.499153+00:00"
+        "sefrio.com": "2026-08-18T13:33:18.499153+00:00",
+        "mundialdeaires.com.co": "2026-08-19T13:34:26.039286+00:00",
+        "nordika.com.co": "2026-08-19T13:34:26.039286+00:00",
+        "centrosdeservicio.com.co": "2026-08-19T13:34:26.039286+00:00",
+        "electricosmedellin.com": "2026-08-19T13:34:26.039286+00:00",
+        "ingeniesys.com": "2026-08-19T13:34:26.039286+00:00",
+        "airegram.com.co": "2026-08-19T13:34:26.039286+00:00",
+        "airescolombia.com": "2026-08-19T13:34:26.039286+00:00",
+        "reparaciondeairesacondicionadosmedellin.com": "2026-08-19T13:34:26.039286+00:00",
+        "refrigeracion.co": "2026-08-19T13:34:26.039286+00:00",
+        "friocolombia.com": "2026-08-19T13:34:26.039286+00:00",
+        "refrigercolombiasas.com": "2026-08-19T13:34:26.039286+00:00",
+        "agefrio.com": "2026-08-19T13:34:26.039286+00:00",
+        "climafrio.com.co": "2026-08-19T13:34:26.039286+00:00",
+        "frioespecializado.com": "2026-08-19T13:34:26.039286+00:00",
+        "novafrios.com.co": "2026-08-19T13:34:26.039286+00:00"
       },
       "query_offset": 0
     },
     "electrico": {
-      "city_index": 1,
+      "city_index": 2,
       "known_domains": {
         "santanaingenieria.com": "2026-08-18T14:04:04.308320+00:00",
         "cieenergy.com": "2026-08-18T14:04:04.308320+00:00",
@@ -250,7 +278,22 @@
         "engineering10.com": "2026-08-18T14:04:04.308320+00:00",
         "intecsecolombia.com": "2026-08-18T14:04:04.308320+00:00",
         "ispcolombia.com": "2026-08-18T14:04:04.308320+00:00",
-        "ingeniouselectric.com.co": "2026-08-18T14:04:04.308320+00:00"
+        "ingeniouselectric.com.co": "2026-08-18T14:04:04.308320+00:00",
+        "duckduckgo.com": "2026-08-19T14:04:04.214039+00:00",
+        "electricistamedellin.com": "2026-08-19T14:04:04.214039+00:00",
+        "electricistamedellin360.com": "2026-08-19T14:04:04.214039+00:00",
+        "melectra.com.co": "2026-08-19T14:04:04.214039+00:00",
+        "pineli.com.co": "2026-08-19T14:04:04.214039+00:00",
+        "electricosmedellin.com": "2026-08-19T14:04:04.214039+00:00",
+        "charliesoluciones.com": "2026-08-19T14:04:04.214039+00:00",
+        "instalacion.solutekcolombia.com": "2026-08-19T14:04:04.214039+00:00",
+        "econtrol.com.co": "2026-08-19T14:04:04.214039+00:00",
+        "coltek.com.co": "2026-08-19T14:04:04.214039+00:00",
+        "solutekcolombia.com": "2026-08-19T14:04:04.214039+00:00",
+        "instalect.co": "2026-08-19T14:04:04.214039+00:00",
+        "certificadoradeantioquia.com": "2026-08-19T14:04:04.214039+00:00",
+        "electrosistemjesua.com": "2026-08-19T14:04:04.214039+00:00",
+        "crsas.co": "2026-08-19T14:04:04.214039+00:00"
       },
       "query_offset": 0
     }

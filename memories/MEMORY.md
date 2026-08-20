@@ -46,3 +46,31 @@ CRM: sifagent-crm-clients. Campos: PK,NombreComercial,Telefono,Email,WhatsApp,Re
 
 ### Comandos Telegram
 "Busca leads hoy" | "Contacte a X" -> estado contactada | "Demo con X" -> estado demo | "Cuantas leads?" -> resumen | "Enriquece el CRM" -> enrichment
+
+## AWS Infrastructure Context
+
+### Region: us-east-1
+
+### EC2
+- Hermes-Agent-Server (t3.small, Ubuntu 22.04) - Gateway Telegram
+- Acceso: SSM only (sin SSH)
+- Servicio: hermes-gateway.service (systemd)
+
+### DynamoDB
+- sifagent-crm-clients: CRM de leads
+- Tablas del FSM SaaS backend (32 Lambdas)
+
+### Servicios
+- Lambda (32 functions - FSM backend)
+- API Gateway + Cognito
+- S3 (assets, uploads)
+- CloudFront
+
+### Monitoreo
+- Scripts en: ~/.hermes/skills/aws-support/scripts/
+- health_check.sh, security_audit.sh, cost_report.sh, instance_diagnostics.sh
+
+### Notas
+- IP de EC2 puede cambiar (buscar por tag Name=Hermes-Agent-Server)
+- No hay Elastic IP
+- Security Group: solo outbound abierto + puertos especificos desde IP del usuario
