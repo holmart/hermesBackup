@@ -27,6 +27,7 @@ echo "Copying custom files..."
 cp -f "$HERMES_HOME/config.yaml" "$BACKUP_DIR/" 2>/dev/null || true
     sed -i "s/api_key: .*/api_key: REDACTED/g" "$BACKUP_DIR/config.yaml" 2>/dev/null || true
 cp -f "$HERMES_HOME/SOUL.md" "$BACKUP_DIR/" 2>/dev/null || true
+cp -f "$HERMES_HOME/RESTAURACION-HERMES.md" "$BACKUP_DIR/" 2>/dev/null || true
 
 # Memories
 mkdir -p "$BACKUP_DIR/memories"
