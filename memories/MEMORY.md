@@ -74,3 +74,17 @@ CRM: sifagent-crm-clients. Campos: PK,NombreComercial,Telefono,Email,WhatsApp,Re
 - IP de EC2 puede cambiar (buscar por tag Name=Hermes-Agent-Server)
 - No hay Elastic IP
 - Security Group: solo outbound abierto + puertos especificos desde IP del usuario
+
+### Consulta de Leads (query_leads.py)
+Script: ~/.hermes/skills/sif-agent-prospecting/scripts/query_leads.py
+Skill: crm-query
+Uso: Cuando el usuario pregunte sobre leads, stats del CRM, o busque empresas.
+Comandos rapidos:
+- Stats: python3 ~/.hermes/skills/sif-agent-prospecting/scripts/query_leads.py --stats
+- Por ciudad: python3 query_leads.py --ciudad Bogota
+- Por score: python3 query_leads.py --min-score 4
+- Por estado: python3 query_leads.py --estado nuevo
+- Por vertical: python3 query_leads.py --vertical fumigacion
+- Buscar texto: python3 query_leads.py --buscar texto
+- Recientes: python3 query_leads.py --recientes 7
+Combinar filtros: --ciudad Medellin --vertical hvac --min-score 4

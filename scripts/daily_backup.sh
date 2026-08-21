@@ -101,6 +101,13 @@ __pycache__/
 *.csv
 GITIGNORE
 
+
+# Save hermes-agent version for disaster recovery
+"$HERMES_HOME/scripts/save_version.sh"
+
+# Sync secrets to AWS Secrets Manager
+"$HERMES_HOME/scripts/sync_env_to_aws.sh"
+
 # Commit and push
 cd "$BACKUP_DIR"
 git add -A

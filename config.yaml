@@ -1,12 +1,10 @@
 model:
-  api_key: REDACTED
-  base_url: https://openrouter.ai/api/v1
-  default: openai/gpt-4o-mini
-  provider: openrouter
+  default: kimi-k2.6
+  provider: kimi-coding
 fallback_providers:
   - api_key: REDACTED
-    base_url: https://api.groq.com/openai/v1
-    model: llama-3.3-70b-versatile
+    base_url: https://openrouter.ai/api/v1
+    model: anthropic/claude-sonnet-4
     provider: openai_compatible
 database:
   journal_mode: wal
@@ -58,7 +56,7 @@ agent:
 terminal:
   backend: local
   cwd: .
-  timeout: 180
+  timeout: 300
   home_mode: auto
   container_cpu: 1
   container_memory: 5120
@@ -133,7 +131,7 @@ approvals:
   destructive_slash_confirm: false
 code_execution:
   max_tool_calls: 50
-  timeout: 300
+  timeout: 600
 streaming:
   enabled: false
 onboarding:
@@ -176,41 +174,11 @@ session_reset:
   at_hour: 4
   idle_minutes: 1440
   mode: none
-
-# ── Security ──────────────────────────────────────────────────────────
-# Secret redaction is ON by default — strings that look like API keys,
-# tokens, and passwords are masked in tool output, logs, and chat
-# responses before the model or user ever sees them. Set redact_secrets
-# to false to disable (e.g. when developing the redactor itself).
-# tirith pre-exec scanning is enabled by default when the tirith binary
-# is available. Configure via security.tirith_* keys or env vars
-# (TIRITH_ENABLED, TIRITH_BIN, TIRITH_TIMEOUT, TIRITH_FAIL_OPEN).
-#
-# security:
-#   redact_secrets: true
-#   tirith_enabled: true
-#   tirith_path: "tirith"
-#   tirith_timeout: 5
-#   tirith_fail_open: true
-
-# ── Fallback Model ────────────────────────────────────────────────────
-# Automatic provider failover when primary is unavailable.
-# Uncomment and configure to enable. Triggers on rate limits (429),
-# overload (529), service errors (503), or connection failures.
-#
-# Supported providers:
-#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
-#   openai-codex (OAuth — hermes auth) — OpenAI Codex
-#   nous         (OAuth — hermes auth) — Nous Portal
-#   zai          (ZAI_API_KEY)         — Z.AI / GLM
-#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
-#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
-#   minimax      (MINIMAX_API_KEY)     — MiniMax
-#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
-#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
-#
-# For custom OpenAI-compatible endpoints, add base_url and key_env.
-#
-# fallback_model:
-#   provider: openrouter
-#   model: anthropic/claude-sonnet-4
+platforms:
+  telegram:
+    enabled: true
+    home_channel:
+      platform: telegram
+      chat_id: '8056202583'
+      name: Holmart
+      user_id: '8056202583'

@@ -56,9 +56,6 @@ LLM_API_BASE = os.environ.get("LLM_API_BASE", "https://openrouter.ai/api/v1")
 LLM_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "openai/gpt-4o-mini")
 
-# Google Places API (optional, complementary search source)
-GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
-
 LOG_MAX_LINES = 5000
 KNOWN_DOMAINS_TTL_DAYS = 30
 MAX_LEADS_PER_RUN = 15
@@ -404,95 +401,12 @@ def is_relevant_domain(url: str, vertical: Dict) -> bool:
     return False
 
 
-# =============================================================================
-# GOOGLE PLACES API (COMPLEMENTARY SOURCE)
-# =============================================================================
-
-def search_google_places(city: str, vertical: Dict, known_domains: Set[str]) -> List[str]:
-    """Search Google Places Text Search API for businesses. Returns list of website URLs.
-
-    Uses the Places API (New) Text Search endpoint. Falls back gracefully on any error.
-    Requires GOOGLE_PLACES_API_KEY environment variable.
-    """
-    if not GOOGLE_PLACES_API_KEY:
-        return []
-
-    search_cfg = vertical.get("search", {})
-    # Build search text from vertical context
-    search_text = f"{vertical.get('name', '')} en {city} Colombia"
-
-    log(f"  Google Places: searching '{search_text}'")
-
-    # Use Places API Text Search (New)
-    url = "https://places.googleapis.com/v1/places:searchText"
-    payload = json.dumps({
-        "textQuery": search_text,
-        "languageCode": "es",
-        "regionCode": "CO",
-        "maxResultCount": 20,
-    }).encode()
-
-    req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-            "X-Goog-FieldMask": "places.displayName,places.websiteUri,places.nationalPhoneNumber,places.formattedAddress,places.rating,places.userRatingCount",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-    except (urllib.error.URLError, urllib.error.HTTPError, Exception) as e:
-        log(f"  Google Places API error: {e}")
-        return []
-
-    # Extract website URLs from results
-    urls = []
-    places = data.get("places", [])
-    for place in places:
-        website = place.get("websiteUri", "")
-        if not website:
-            continue
-        domain = get_root_domain(website)
-        if domain in known_domains:
-            continue
-        if domain in BLOCKED_DOMAINS_GLOBAL:
-            continue
-        urls.append(website)
-        name = place.get("displayName", {}).get("text", "")
-        rating = place.get("rating", 0)
-        reviews = place.get("userRatingCount", 0)
-        log(f"    📍 {name} ({rating}⭐ {reviews} reviews) → {domain}")
-
-    log(f"  Google Places: {len(places)} results, {len(urls)} with websites")
-    return urls
-
-
-def search_city(city: str, vertical: Dict, vstate: Dict, crm_domains: Optional[Set[str]] = None) -> List[str]:
-    """Search DuckDuckGo + Google Places, deduplicate by domain. Filters out CRM-known domains early."""
+def search_city(city: str, vertical: Dict, vstate: Dict) -> List[str]:
+    """Search DuckDuckGo, deduplicate by domain."""
     known = set(vstate.get("known_domains", {}).keys()) if isinstance(vstate.get("known_domains"), dict) else set()
-    if crm_domains:
-        known |= crm_domains
     candidate_urls = []
     seen_domains = set()
 
-    # --- Source 1: Google Places API (if configured) ---
-    if GOOGLE_PLACES_API_KEY:
-        places_urls = search_google_places(city, vertical, known)
-        for u in places_urls:
-            domain = get_root_domain(u)
-            if domain not in known and domain not in seen_domains:
-                seen_domains.add(domain)
-                candidate_urls.append(u)
-        log(f"  Google Places: {len(places_urls)} results, {len(candidate_urls)} new")
-    else:
-        log("  Google Places: not configured (set GOOGLE_PLACES_API_KEY to enable)")
-
-    # --- Source 2: DuckDuckGo HTML ---
     known_list = list(known)
     queries = generate_smart_queries(city, vertical, known_list)
 
@@ -749,12 +663,12 @@ def scrape_company(url: str, vertical: Dict) -> Optional[Dict]:
 # =============================================================================
 
 def load_existing_domains(table: str) -> Set[str]:
-    """Single scan to get all existing domains, phones, and NITs from DynamoDB."""
+    """Single scan to get all existing domains from DynamoDB."""
     domains = set()
     start_key = None
     while True:
         cmd = ["aws", "dynamodb", "scan", "--table-name", table, "--region", AWS_REGION,
-               "--projection-expression", "Dominio,Website,Telefono,NIT", "--select", "SPECIFIC_ATTRIBUTES"]
+               "--projection-expression", "Dominio,Website", "--select", "SPECIFIC_ATTRIBUTES"]
         if start_key:
             cmd.extend(["--exclusive-start-key", json.dumps(start_key)])
         try:
@@ -766,23 +680,12 @@ def load_existing_domains(table: str) -> Set[str]:
                 d = item.get("Dominio", {}).get("S", "") or get_root_domain(item.get("Website", {}).get("S", ""))
                 if d:
                     domains.add(d)
-                # Also track phones for cross-deduplication
-                phone = item.get("Telefono", {}).get("S", "")
-                if phone and len(phone) >= 10:
-                    domains.add(f"PHONE:{phone}")
-                # Track NITs
-                nit = item.get("NIT", {}).get("S", "")
-                if nit and len(nit) >= 6:
-                    domains.add(f"NIT:{nit}")
             if not data.get("LastEvaluatedKey"):
                 break
             start_key = data["LastEvaluatedKey"]
         except Exception:
             break
-    phone_count = sum(1 for d in domains if d.startswith("PHONE:"))
-    nit_count = sum(1 for d in domains if d.startswith("NIT:"))
-    domain_count = len(domains) - phone_count - nit_count
-    log(f"  Loaded {domain_count} domains, {phone_count} phones, {nit_count} NITs from CRM")
+    log(f"  Loaded {len(domains)} existing domains from CRM")
     return domains
 
 
@@ -947,13 +850,9 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
 
     log(f"Target city: {city} (index {city_index})")
 
-    # PRE-FILTER: Load CRM domains early to avoid scraping known companies
-    log("\n--- PRE-FILTER: LOADING CRM DOMAINS ---")
-    existing_domains = load_existing_domains(table)
-
     # PHASE 1: SEARCH
     log("\n--- PHASE 1: SEARCH ---")
-    candidate_urls = search_city(city, vertical, vstate, crm_domains=existing_domains)
+    candidate_urls = search_city(city, vertical, vstate)
 
     # PHASE 2: SCRAPE
     log("\n--- PHASE 2: SCRAPE & EXTRACT ---")
@@ -995,25 +894,18 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
 
     # PHASE 5: INSERT TO CRM
     log("\n--- PHASE 5: INSERT TO CRM ---")
+    existing_domains = load_existing_domains(table)
     inserted = 0
     duplicates = 0
     for lead in qualified_leads:
         domain = lead.get("domain", "")
-        phone = lead.get("phone", "")
-        # Deduplication: check domain, phone, and NIT
         if domain in existing_domains:
-            log(f"  Skip (domain exists): {lead['company_name']}")
-            duplicates += 1
-            continue
-        if phone and f"PHONE:{phone}" in existing_domains:
-            log(f"  Skip (phone exists): {lead['company_name']} ({phone})")
+            log(f"  Skip (exists): {lead['company_name']}")
             duplicates += 1
             continue
         if insert_lead(lead, table, vertical_id):
             inserted += 1
             existing_domains.add(domain)
-            if phone:
-                existing_domains.add(f"PHONE:{phone}")
             log(f"  ✓ Inserted: {lead['company_name']} (score {lead['score']})")
         else:
             duplicates += 1
@@ -1088,11 +980,10 @@ def main():
             pass
 
     # Reload env-dependent globals
-    global TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, LLM_API_KEY, GOOGLE_PLACES_API_KEY
+    global TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, LLM_API_KEY
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", TELEGRAM_BOT_TOKEN)
     TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_ALLOWED_USERS", TELEGRAM_CHAT_ID).split(",")[0].strip()
     LLM_API_KEY = os.environ.get("OPENROUTER_API_KEY", LLM_API_KEY)
-    GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", GOOGLE_PLACES_API_KEY)
 
     log("=" * 60)
     log("UNIFIED LEAD PIPELINE v5 — Multi-Vertical + LLM")
