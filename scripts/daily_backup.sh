@@ -37,6 +37,13 @@ mkdir -p "$BACKUP_DIR/skills"
 cp -rf "$HERMES_HOME/skills/sif-agent-prospecting" "$BACKUP_DIR/skills/" 2>/dev/null || true
 cp -rf "$HERMES_HOME/skills/crm-data-enrichment" "$BACKUP_DIR/skills/" 2>/dev/null || true
 cp -rf "$HERMES_HOME/skills/crm-internal-field-enrichment" "$BACKUP_DIR/skills/" 2>/dev/null || true
+cp -rf "$HERMES_HOME/skills/aws-support" "$BACKUP_DIR/skills/" 2>/dev/null || true
+cp -rf "$HERMES_HOME/skills/competencia-fumigacion" "$BACKUP_DIR/skills/" 2>/dev/null || true
+cp -rf "$HERMES_HOME/skills/configuration" "$BACKUP_DIR/skills/" 2>/dev/null || true
+cp -rf "$HERMES_HOME/skills/crm-query" "$BACKUP_DIR/skills/" 2>/dev/null || true
+cp -rf "$HERMES_HOME/skills/fsm-saas-platform" "$BACKUP_DIR/skills/" 2>/dev/null || true
+cp -rf "$HERMES_HOME/skills/hermes" "$BACKUP_DIR/skills/" 2>/dev/null || true
+cp -rf "$HERMES_HOME/skills/rues-data-enrichment" "$BACKUP_DIR/skills/" 2>/dev/null || true
 
 # Cron jobs config
 mkdir -p "$BACKUP_DIR/cron"
@@ -55,6 +62,35 @@ cp -f "$HERMES_HOME/scripts/"*.sh "$BACKUP_DIR/scripts/" 2>/dev/null || true
 if [ -f "$HERMES_HOME/.env" ]; then
     grep -v "TOKEN\|KEY\|SECRET\|PASSWORD" "$HERMES_HOME/.env" > "$BACKUP_DIR/.env.example" 2>/dev/null || true
 fi
+
+# Plugins
+if [ -d "$HERMES_HOME/plugins" ]; then
+    mkdir -p "$BACKUP_DIR/plugins"
+    cp -rf "$HERMES_HOME/plugins/"* "$BACKUP_DIR/plugins/" 2>/dev/null || true
+fi
+
+# Auth & gateway state
+mkdir -p "$BACKUP_DIR/state"
+if [ -f "$HERMES_HOME/auth.json" ]; then
+    python3 -c "
+import json
+with open('$HERMES_HOME/auth.json') as f:
+    d = json.load(f)
+for provider, cfg in d.get('providers', {}).items():
+    for key in list(cfg.keys()):
+        if any(s in key.lower() for s in ['token', 'key', 'secret', 'password', 'credential']):
+            cfg[key] = 'REDACTED'
+for provider, creds in d.get('credential_pool', {}).items():
+    for cred in creds:
+        for key in list(cred.keys()):
+            if any(s in key.lower() for s in ['token', 'key', 'secret', 'password', 'credential', 'access']):
+                cred[key] = 'REDACTED'
+with open('$BACKUP_DIR/state/auth.json', 'w') as f:
+    json.dump(d, f, indent=2)
+" 2>/dev/null || true
+fi
+cp -f "$HERMES_HOME/gateway_state.json" "$BACKUP_DIR/state/" 2>/dev/null || true
+cp -f "$HERMES_HOME/channel_directory.json" "$BACKUP_DIR/state/" 2>/dev/null || true
 
 # Create .gitignore if not exists
 cat > "$BACKUP_DIR/.gitignore" << 'GITIGNORE'

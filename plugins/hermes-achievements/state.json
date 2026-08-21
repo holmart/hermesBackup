@@ -1,0 +1,37 @@
+{
+  "unlocks": {
+    "browser_possession": {
+      "evidence": null,
+      "first_tier": "Silver",
+      "unlocked_at": 1786693420
+    },
+    "let_him_cook": {
+      "evidence": {
+        "session_id": "20260805_004909_8af88f",
+        "title": "Uso del navegador y sus herramientas",
+        "value": 200
+      },
+      "first_tier": "Copper",
+      "unlocked_at": 1786693420
+    },
+    "model_sommelier": {
+      "evidence": null,
+      "first_tier": "Copper",
+      "unlocked_at": 1786693420
+    },
+    "provider_polyglot": {
+      "evidence": null,
+      "first_tier": "Silver",
+      "unlocked_at": 1786693420
+    },
+    "supposed_to_be_quick": {
+      "evidence": {
+        "session_id": "20260805_004909_8af88f",
+        "title": "Uso del navegador y sus herramientas",
+        "value": 418
+      },
+      "first_tier": "Copper",
+      "unlocked_at": 1786693420
+    }
+  }
+}
