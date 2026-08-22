@@ -162,7 +162,7 @@
   "query_offset": 3,
   "verticals": {
     "fumigacion": {
-      "city_index": 5,
+      "city_index": 6,
       "known_domains": {
         "duckduckgo.com": "2026-08-16T15:52:37.891582+00:00",
         "fumycontrol.co": "2026-08-16T15:52:37.891582+00:00",
@@ -236,12 +236,17 @@
         "fuseincol-fumigacionesycontrolplagas.webnode.com.co": "2026-08-20T13:03:34.337186+00:00",
         "manorapido.com": "2026-08-20T13:03:34.337186+00:00",
         "deluxeclean.co": "2026-08-20T13:03:34.337186+00:00",
-        "cidest.com": "2026-08-20T13:03:34.337186+00:00"
+        "cidest.com": "2026-08-20T13:03:34.337186+00:00",
+        "plagasoff.com": "2026-08-21T13:03:22.497237+00:00",
+        "esolucion.com.co": "2026-08-21T13:03:22.497237+00:00",
+        "fumigacionesyextintores.webnode.com.co": "2026-08-21T13:03:22.497237+00:00",
+        "fumigacionesdelcaribe.com": "2026-08-21T13:03:22.497237+00:00",
+        "fumigclean.com": "2026-08-21T13:03:22.497237+00:00"
       },
       "query_offset": 0
     },
     "hvac": {
-      "city_index": 3,
+      "city_index": 4,
       "known_domains": {
         "duckduckgo.com": "2026-08-18T13:33:18.499153+00:00",
         "aireacondicionadosas.com": "2026-08-18T13:33:18.499153+00:00",
@@ -287,12 +292,27 @@
         "solucionessarel.com": "2026-08-20T13:34:22.044578+00:00",
         "fulliceco.com": "2026-08-20T13:34:22.044578+00:00",
         "refrimag.com": "2026-08-20T13:34:22.044578+00:00",
-        "megaconfortsas.com": "2026-08-20T13:34:22.044578+00:00"
+        "megaconfortsas.com": "2026-08-20T13:34:22.044578+00:00",
+        "lamarclimatizacion.com": "2026-08-21T13:33:51.748244+00:00",
+        "aireacondicionadobarranquilla.com": "2026-08-21T13:33:51.748244+00:00",
+        "serviciotecnicodelcaribe.com": "2026-08-21T13:33:51.748244+00:00",
+        "servicioingenieriarefrigeracion.com": "2026-08-21T13:33:51.748244+00:00",
+        "tecniaires.com": "2026-08-21T13:33:51.748244+00:00",
+        "siimsas.com": "2026-08-21T13:33:51.748244+00:00",
+        "frozzcolombia.com": "2026-08-21T13:33:51.748244+00:00",
+        "alaskarefrigeracion.co": "2026-08-21T13:33:51.748244+00:00",
+        "refricesar.com": "2026-08-21T13:33:51.748244+00:00",
+        "gmsolucionestermicas.com": "2026-08-21T13:33:51.748244+00:00",
+        "climatiza.com.co": "2026-08-21T13:33:51.748244+00:00",
+        "igmontajesyservicios.com": "2026-08-21T13:33:51.748244+00:00",
+        "mrcoolingenieria.com": "2026-08-21T13:33:51.748244+00:00",
+        "aarci.co": "2026-08-21T13:33:51.748244+00:00",
+        "climaxservi.com": "2026-08-21T13:33:51.748244+00:00"
       },
       "query_offset": 0
     },
     "electrico": {
-      "city_index": 3,
+      "city_index": 4,
       "known_domains": {
         "santanaingenieria.com": "2026-08-18T14:04:04.308320+00:00",
         "cieenergy.com": "2026-08-18T14:04:04.308320+00:00",
@@ -338,7 +358,22 @@
         "elinsesas.com": "2026-08-20T14:05:13.198343+00:00",
         "planetacolombia.com": "2026-08-20T14:05:13.198343+00:00",
         "avantec.com.co": "2026-08-20T14:05:13.198343+00:00",
-        "evolucionautomatica.com.co": "2026-08-20T14:05:13.198343+00:00"
+        "evolucionautomatica.com.co": "2026-08-20T14:05:13.198343+00:00",
+        "electriservicebarranquilla.com": "2026-08-21T14:03:56.295440+00:00",
+        "electricistasbarranquilla.com": "2026-08-21T14:03:56.295440+00:00",
+        "siaindustrial.com": "2026-08-21T14:03:56.295440+00:00",
+        "proyectosindustrialesdelcaribe.com": "2026-08-21T14:03:56.295440+00:00",
+        "dimontltda.com": "2026-08-21T14:03:56.295440+00:00",
+        "es.cybo.com": "2026-08-21T14:03:56.295440+00:00",
+        "seita.com.co": "2026-08-21T14:03:56.295440+00:00",
+        "electricistas-barranquilla.com": "2026-08-21T14:03:56.295440+00:00",
+        "ingelem.com": "2026-08-21T14:03:56.295440+00:00",
+        "cableado.solutekcolombia.com": "2026-08-21T14:03:56.295440+00:00",
+        "jovega.com.co": "2026-08-21T14:03:56.295440+00:00",
+        "solucionesoc.com": "2026-08-21T14:03:56.295440+00:00",
+        "intergset.com.co": "2026-08-21T14:03:56.295440+00:00",
+        "construredeselectricas.com": "2026-08-21T14:03:56.295440+00:00",
+        "retiproyectos.com": "2026-08-21T14:03:56.295440+00:00"
       },
       "query_offset": 0
     }

@@ -62,7 +62,6 @@ GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
 LOG_MAX_LINES = 5000
 KNOWN_DOMAINS_TTL_DAYS = 30
 MAX_LEADS_PER_RUN = 15
-CITIES_PER_RUN = 5  # Number of cities to search per execution
 
 BLOCKED_DOMAINS_GLOBAL = {
     "bing.com", "microsoft.com", "google.com", "youtube.com", "facebook.com",
@@ -942,36 +941,19 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
     vstate = get_vertical_state(state, vertical_id)
     expire_known_domains(vstate)
 
-    # Multi-city: search CITIES_PER_RUN cities per execution
     city_index = vstate.get("city_index", 0) % len(cities)
-    num_cities = min(CITIES_PER_RUN, len(cities))
-    target_cities = [cities[(city_index + i) % len(cities)] for i in range(num_cities)]
-    next_city = cities[(city_index + num_cities) % len(cities)]
+    city = cities[city_index]
+    next_city = cities[(city_index + 1) % len(cities)]
 
-    log(f"Target cities: {target_cities} (starting index {city_index})")
+    log(f"Target city: {city} (index {city_index})")
 
     # PRE-FILTER: Load CRM domains early to avoid scraping known companies
     log("\n--- PRE-FILTER: LOADING CRM DOMAINS ---")
     existing_domains = load_existing_domains(table)
 
-    # PHASE 1: SEARCH (multiple cities)
+    # PHASE 1: SEARCH
     log("\n--- PHASE 1: SEARCH ---")
-    candidate_urls = []
-    for city in target_cities:
-        log(f"\n  >> Searching city: {city}")
-        city_urls = search_city(city, vertical, vstate, crm_domains=existing_domains)
-        candidate_urls.extend(city_urls)
-        log(f"  << {city}: {len(city_urls)} candidates")
-    # Deduplicate by domain
-    seen = set()
-    unique_urls = []
-    for u in candidate_urls:
-        d = get_root_domain(u)
-        if d not in seen:
-            seen.add(d)
-            unique_urls.append(u)
-    candidate_urls = unique_urls
-    log(f"Total unique candidates across {num_cities} cities: {len(candidate_urls)}")
+    candidate_urls = search_city(city, vertical, vstate, crm_domains=existing_domains)
 
     # PHASE 2: SCRAPE
     log("\n--- PHASE 2: SCRAPE & EXTRACT ---")
@@ -1065,7 +1047,7 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
     send_telegram_report(qualified_leads, city, stats, vertical)
 
     # Update vertical state
-    vstate["city_index"] = (city_index + num_cities) % len(cities)
+    vstate["city_index"] = (city_index + 1) % len(cities)
     now_iso = datetime.now(timezone.utc).isoformat()
     known = vstate.get("known_domains", {})
     if isinstance(known, list):
