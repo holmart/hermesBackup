@@ -162,7 +162,7 @@
   "query_offset": 3,
   "verticals": {
     "fumigacion": {
-      "city_index": 6,
+      "city_index": 12,
       "known_domains": {
         "duckduckgo.com": "2026-08-16T15:52:37.891582+00:00",
         "fumycontrol.co": "2026-08-16T15:52:37.891582+00:00",
@@ -241,12 +241,37 @@
         "esolucion.com.co": "2026-08-21T13:03:22.497237+00:00",
         "fumigacionesyextintores.webnode.com.co": "2026-08-21T13:03:22.497237+00:00",
         "fumigacionesdelcaribe.com": "2026-08-21T13:03:22.497237+00:00",
-        "fumigclean.com": "2026-08-21T13:03:22.497237+00:00"
+        "fumigclean.com": "2026-08-21T13:03:22.497237+00:00",
+        "fumigacionpereira.com": "2026-08-22T13:05:42.552361+00:00",
+        "fumigacionesjc.com.co": "2026-08-22T13:05:42.552361+00:00",
+        "globalfumigaciones.co": "2026-08-22T13:05:42.552361+00:00",
+        "fumigacionespereira.com": "2026-08-22T13:05:42.552361+00:00",
+        "dicard.co": "2026-08-22T13:05:42.552361+00:00",
+        "fumitecpereira.com": "2026-08-22T13:05:42.552361+00:00",
+        "ycard.co": "2026-08-22T13:05:42.552361+00:00",
+        "fumigacionesextinseg.com": "2026-08-22T13:05:42.552361+00:00",
+        "el-abejorro.cercia.co": "2026-08-22T13:05:42.552361+00:00",
+        "fumicontrolcol.com": "2026-08-22T13:05:42.552361+00:00",
+        "feex-fumiextincion.ueniweb.com": "2026-08-22T13:05:42.552361+00:00",
+        "firmania.com.co": "2026-08-22T13:05:42.552361+00:00",
+        "fumigacionesenpereira.webnode.com.co": "2026-08-22T13:05:42.552361+00:00",
+        "nexdu.com": "2026-08-22T13:05:42.552361+00:00",
+        "bioserviciossas.co": "2026-08-22T13:05:42.552361+00:00",
+        "fumiplagdelnorte.com": "2026-08-22T15:10:53.536830+00:00",
+        "calidadtotalsas.com": "2026-08-22T15:10:53.536830+00:00",
+        "mascontrolplus.com": "2026-08-22T15:10:53.536830+00:00",
+        "fumigacionescali.com": "2026-08-22T15:10:53.536830+00:00",
+        "extermimex.com": "2026-08-22T15:10:53.536830+00:00",
+        "limpiezasecoman.com": "2026-08-22T15:10:53.536830+00:00",
+        "exonaproyectos.com": "2026-08-22T15:10:53.536830+00:00",
+        "lavanderiahospitalaria.com": "2026-08-22T15:10:53.536830+00:00",
+        "ecolplag.webnode.com.co": "2026-08-22T15:10:53.536830+00:00",
+        "fumigacionescucuta.com": "2026-08-22T15:10:53.536830+00:00"
       },
       "query_offset": 0
     },
     "hvac": {
-      "city_index": 4,
+      "city_index": 9,
       "known_domains": {
         "duckduckgo.com": "2026-08-18T13:33:18.499153+00:00",
         "aireacondicionadosas.com": "2026-08-18T13:33:18.499153+00:00",
@@ -307,12 +332,27 @@
         "igmontajesyservicios.com": "2026-08-21T13:33:51.748244+00:00",
         "mrcoolingenieria.com": "2026-08-21T13:33:51.748244+00:00",
         "aarci.co": "2026-08-21T13:33:51.748244+00:00",
-        "climaxservi.com": "2026-08-21T13:33:51.748244+00:00"
+        "climaxservi.com": "2026-08-21T13:33:51.748244+00:00",
+        "ayrcolsas.com": "2026-08-22T13:35:30.446297+00:00",
+        "integralderefrigeracion.com.co": "2026-08-22T13:35:30.446297+00:00",
+        "airesyrefrigeracion.com": "2026-08-22T13:35:30.446297+00:00",
+        "airfrais.com.co": "2026-08-22T13:35:30.446297+00:00",
+        "friocol.com": "2026-08-22T13:35:30.446297+00:00",
+        "refrigeramos.com": "2026-08-22T13:35:30.446297+00:00",
+        "airesan.com": "2026-08-22T13:35:30.446297+00:00",
+        "aiyellow.com": "2026-08-22T13:35:30.446297+00:00",
+        "acdcmantenimiento.com": "2026-08-22T13:35:30.446297+00:00",
+        "frioplanet.negocio.site": "2026-08-22T13:35:30.446297+00:00",
+        "fricontec.com": "2026-08-22T13:35:30.446297+00:00",
+        "airesacondicionadosbucaramanga.com": "2026-08-22T13:35:30.446297+00:00",
+        "emincol.com": "2026-08-22T13:35:30.446297+00:00",
+        "nexdu.com": "2026-08-22T13:35:30.446297+00:00",
+        "frioacerossegovia.com": "2026-08-22T13:35:30.446297+00:00"
       },
       "query_offset": 0
     },
     "electrico": {
-      "city_index": 4,
+      "city_index": 9,
       "known_domains": {
         "santanaingenieria.com": "2026-08-18T14:04:04.308320+00:00",
         "cieenergy.com": "2026-08-18T14:04:04.308320+00:00",
@@ -373,7 +413,22 @@
         "solucionesoc.com": "2026-08-21T14:03:56.295440+00:00",
         "intergset.com.co": "2026-08-21T14:03:56.295440+00:00",
         "construredeselectricas.com": "2026-08-21T14:03:56.295440+00:00",
-        "retiproyectos.com": "2026-08-21T14:03:56.295440+00:00"
+        "retiproyectos.com": "2026-08-21T14:03:56.295440+00:00",
+        "flo.fun": "2026-08-22T14:05:42.076306+00:00",
+        "distrielectricosje.com": "2026-08-22T14:05:42.076306+00:00",
+        "electricistabucaramanga.com": "2026-08-22T14:05:42.076306+00:00",
+        "ingenieroselectricos.com.co": "2026-08-22T14:05:42.076306+00:00",
+        "acsystemsbuc.com.co": "2026-08-22T14:05:42.076306+00:00",
+        "gratis-4903362.webadorsite.com": "2026-08-22T14:05:42.076306+00:00",
+        "mantenimientoelectronico.com": "2026-08-22T14:05:42.076306+00:00",
+        "brdynamicgroup.com": "2026-08-22T14:05:42.076306+00:00",
+        "adingenieriaelectrica.com": "2026-08-22T14:05:42.076306+00:00",
+        "autekcolombia.com": "2026-08-22T14:05:42.076306+00:00",
+        "madeenergy.co": "2026-08-22T14:05:42.076306+00:00",
+        "colombia.com.co": "2026-08-22T14:05:42.076306+00:00",
+        "ocertificc.com": "2026-08-22T14:05:42.076306+00:00",
+        "certificadosretie.com": "2026-08-22T14:05:42.076306+00:00",
+        "certiretie.com": "2026-08-22T14:05:42.076306+00:00"
       },
       "query_offset": 0
     }

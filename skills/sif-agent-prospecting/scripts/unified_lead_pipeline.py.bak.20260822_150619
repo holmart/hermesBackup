@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
 """
-Unified Lead Generation Pipeline for SIF Agent — v6 (Enhanced Search + Scoring)
+Unified Lead Generation Pipeline for SIF Agent — v5 (Multi-Vertical + LLM)
 ============================================================================
-New in v6:
-- Bing HTML search as complementary/fallback source (Source 3)
-- Schema.org / JSON-LD structured data extraction (phone, email, name, city, rating)
-- Parallelized scraping with ThreadPoolExecutor (3 workers)
-- Fuzzy deduplication by company name (SequenceMatcher 85%) and email
-- Enhanced scoring: Google rating, review count, years in business, certifications
-- Years in business and certifications extraction from HTML text
-- MAX_LEADS_PER_RUN reduced to 10 for tighter quality control per vertical
-
-Carried from v5:
+New in v5:
 - Multi-vertical support via JSON config files (verticals/*.json)
 - LLM-powered smart query generation (adapts searches each run)
 - LLM-powered lead validation (rejects false positives, suggests pitch)
@@ -38,10 +29,8 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote_plus, urlparse, urljoin
-from typing import Optional, Dict, List, Set, Tuple
+from typing import Optional, Dict, List, Set
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from difflib import SequenceMatcher
 
 # =============================================================================
 # CONFIGURATION
@@ -72,7 +61,8 @@ GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
 
 LOG_MAX_LINES = 5000
 KNOWN_DOMAINS_TTL_DAYS = 30
-MAX_LEADS_PER_RUN = 10
+MAX_LEADS_PER_RUN = 15
+CITIES_PER_RUN = 5  # Number of cities to search per execution
 
 BLOCKED_DOMAINS_GLOBAL = {
     "bing.com", "microsoft.com", "google.com", "youtube.com", "facebook.com",
@@ -483,42 +473,8 @@ def search_google_places(city: str, vertical: Dict, known_domains: Set[str]) -> 
     return urls
 
 
-def search_bing(city: str, vertical: Dict, known_domains: Set[str]) -> List[str]:
-    """Search Bing HTML as a complementary/fallback source. Returns list of relevant URLs."""
-    search_cfg = vertical.get("search", {})
-    fallback_queries = search_cfg.get("fallback_queries", [])
-    # Use 2 random fallback queries for Bing to complement DDG
-    bing_queries = random.sample(fallback_queries, min(2, len(fallback_queries)))
-    bing_queries = [q.format(city=city) for q in bing_queries]
-
-    urls = []
-    for query in bing_queries:
-        search_url = f"https://www.bing.com/search?q={quote_plus(query)}&setlang=es&cc=CO"
-        log(f"  Bing: {query}")
-        html = fetch_url(search_url, timeout=12)
-        if not html:
-            continue
-
-        # Extract URLs from Bing results
-        for match in re.finditer(r'<a[^>]+href="(https?://[^"]+)"[^>]*>', html):
-            url = match.group(1)
-            domain = get_root_domain(url)
-            if not is_relevant_domain(url, vertical):
-                continue
-            if domain in known_domains:
-                continue
-            # Skip Bing internal links
-            if "bing.com" in domain or "microsoft.com" in domain:
-                continue
-            urls.append(url)
-
-        time.sleep(random.uniform(5, 9))
-
-    return list(dict.fromkeys(urls))  # Dedupe preserving order
-
-
 def search_city(city: str, vertical: Dict, vstate: Dict, crm_domains: Optional[Set[str]] = None) -> List[str]:
-    """Search DuckDuckGo + Google Places + Bing, deduplicate by domain. Filters out CRM-known domains early."""
+    """Search DuckDuckGo + Google Places, deduplicate by domain. Filters out CRM-known domains early."""
     known = set(vstate.get("known_domains", {}).keys()) if isinstance(vstate.get("known_domains"), dict) else set()
     if crm_domains:
         known |= crm_domains
@@ -543,7 +499,7 @@ def search_city(city: str, vertical: Dict, vstate: Dict, crm_domains: Optional[S
 
     for query in queries:
         search_url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
-        log(f"  Searching DDG: {query}")
+        log(f"  Searching: {query}")
 
         html = fetch_url(search_url)
         if not html:
@@ -562,18 +518,6 @@ def search_city(city: str, vertical: Dict, vstate: Dict, crm_domains: Optional[S
 
         log(f"  Found {len(links)} links, {len(seen_domains)} new relevant domains")
         time.sleep(random.uniform(4, 7))
-
-    # --- Source 3: Bing HTML (complementary/fallback) ---
-    bing_urls = search_bing(city, vertical, known | seen_domains)
-    bing_new = 0
-    for u in bing_urls:
-        domain = get_root_domain(u)
-        if domain not in known and domain not in seen_domains:
-            seen_domains.add(domain)
-            candidate_urls.append(u)
-            bing_new += 1
-    if bing_new:
-        log(f"  Bing: {len(bing_urls)} results, {bing_new} new unique domains")
 
     log(f"Total unique domains to scrape: {len(candidate_urls)}")
     return candidate_urls
@@ -740,126 +684,8 @@ def extract_city_from_html(html: str) -> Optional[str]:
     return match.group().title() if match else None
 
 
-def extract_structured_data(html: str) -> Dict:
-    """Extract JSON-LD / schema.org structured data (LocalBusiness, Organization, etc.)."""
-    data = {}
-    for match in re.finditer(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE):
-        try:
-            ld = json.loads(match.group(1).strip())
-            # Handle @graph arrays
-            items = ld if isinstance(ld, list) else ld.get("@graph", [ld]) if isinstance(ld, dict) else []
-            if isinstance(items, dict):
-                items = [items]
-            for item in items:
-                if not isinstance(item, dict):
-                    continue
-                item_type = item.get("@type", "")
-                if isinstance(item_type, list):
-                    item_type = " ".join(item_type)
-                relevant_types = ("LocalBusiness", "Organization", "ProfessionalService",
-                                  "HomeAndConstructionBusiness", "Store", "Service")
-                if any(t in item_type for t in relevant_types):
-                    if item.get("telephone"):
-                        phone = item["telephone"]
-                        if isinstance(phone, list):
-                            phone = phone[0]
-                        data["phone"] = str(phone)
-                    if item.get("email"):
-                        email = item["email"]
-                        if isinstance(email, list):
-                            email = email[0]
-                        data["email"] = str(email).lower().strip()
-                    if item.get("name"):
-                        data["name"] = str(item["name"]).strip()
-                    if item.get("url"):
-                        data["url"] = str(item["url"])
-                    # Address
-                    address = item.get("address", {})
-                    if isinstance(address, dict):
-                        city = address.get("addressLocality", "") or address.get("addressRegion", "")
-                        if city:
-                            data["city"] = str(city).strip()
-                    # Social profiles
-                    same_as = item.get("sameAs", [])
-                    if isinstance(same_as, str):
-                        same_as = [same_as]
-                    for link in same_as:
-                        if "instagram.com" in str(link):
-                            data["instagram"] = str(link)
-                        elif "facebook.com" in str(link):
-                            data["facebook"] = str(link)
-                    # Founding year
-                    if item.get("foundingDate"):
-                        try:
-                            year = int(str(item["foundingDate"])[:4])
-                            if 1950 <= year <= 2026:
-                                data["founding_year"] = year
-                        except (ValueError, TypeError):
-                            pass
-                    # Rating
-                    agg_rating = item.get("aggregateRating", {})
-                    if isinstance(agg_rating, dict) and agg_rating.get("ratingValue"):
-                        try:
-                            data["rating"] = float(agg_rating["ratingValue"])
-                            data["review_count"] = int(agg_rating.get("reviewCount", 0))
-                        except (ValueError, TypeError):
-                            pass
-                    break  # Take first relevant item
-        except (json.JSONDecodeError, KeyError, TypeError):
-            continue
-    return data
-
-
-def extract_years_in_business(html: str) -> Optional[int]:
-    """Extract years of operation from text patterns."""
-    html_lower = html.lower()
-    current_year = datetime.now().year
-
-    # Pattern: "desde 2005", "fundada en 2010", etc.
-    for pat in [r"(?:desde|fundad[ao]\s+en|establecid[ao]\s+en|creada\s+en)\s+(\d{4})",
-                r"(\d{4})\s*[-–]\s*(?:hoy|presente|actualidad|" + str(current_year) + ")"]:
-        match = re.search(pat, html_lower)
-        if match:
-            year = int(match.group(1))
-            if 1970 <= year <= current_year:
-                return current_year - year
-
-    # Pattern: "más de 10 años", "20 años de experiencia"
-    for pat in [r"m[aá]s\s+de\s+(\d{1,2})\s+a[ñn]os",
-                r"(\d{1,2})\s+a[ñn]os\s+de\s+(?:experiencia|trayectoria|servicio)"]:
-        match = re.search(pat, html_lower)
-        if match:
-            years = int(match.group(1))
-            if 2 <= years <= 60:
-                return years
-
-    return None
-
-
-def extract_certifications(html: str) -> List[str]:
-    """Extract certifications mentioned in the page."""
-    html_lower = html.lower()
-    certs = []
-    cert_patterns = {
-        "ISO 9001": r"iso\s*9001",
-        "ISO 14001": r"iso\s*14001",
-        "ISO 45001": r"iso\s*45001",
-        "INVIMA": r"invima",
-        "ICA": r"\bica\b",
-        "Secretaría de Salud": r"secretar[ií]a\s+de\s+salud",
-        "RUT": r"\brut\b",
-        "Cámara de Comercio": r"c[aá]mara\s+de\s+comercio",
-        "RETIE": r"\bretie\b",
-        "CONTE": r"\bconte\b",
-    }
-    for cert_name, pattern in cert_patterns.items():
-        if re.search(pattern, html_lower):
-            certs.append(cert_name)
-    return certs
-
-
 def scrape_company(url: str, vertical: Dict) -> Optional[Dict]:
-    """Visit company website + subpages, extract data including structured data."""
+    """Visit company website + subpages, extract data."""
     html = fetch_url(url, max_attempts=2, timeout=12)
     if not html or len(html) < 200:
         return None
@@ -879,21 +705,9 @@ def scrape_company(url: str, vertical: Dict) -> Optional[Dict]:
     if title_match:
         raw_title = title_match.group(1).strip()
 
-    # Extract structured data (schema.org / JSON-LD)
-    structured = extract_structured_data(all_html)
-
     phones = extract_phones(all_html)
     emails = extract_emails(all_html)
     whatsapp = extract_whatsapp(all_html)
-
-    # Enrich from structured data
-    if structured.get("phone") and not phones:
-        validated = validate_colombian_phone(structured["phone"])
-        if validated:
-            phones = [validated]
-    if structured.get("email") and not emails:
-        if is_valid_email(structured["email"]):
-            emails = [structured["email"]]
 
     if not phones and not emails:
         return None
@@ -914,29 +728,8 @@ def scrape_company(url: str, vertical: Dict) -> Optional[Dict]:
         if not best_email:
             best_email = emails[0]
 
-    # Extract additional signals for scoring
-    years_in_biz = extract_years_in_business(all_html)
-    if not years_in_biz and structured.get("founding_year"):
-        years_in_biz = datetime.now().year - structured["founding_year"]
-
-    certifications = extract_certifications(all_html)
-
-    # Determine city — prefer structured data if available
-    city = structured.get("city", "") or extract_city_from_html(all_html) or ""
-
-    # Instagram from structured data
-    instagram = structured.get("instagram", "")
-
-    # Company name — prefer structured data's name if it looks good
-    company_name = clean_company_name(raw_title, url)
-    if structured.get("name") and 3 < len(structured["name"]) < 50:
-        # Use structured name if it's more specific than domain-derived name
-        struct_name = structured["name"].strip()
-        if len(struct_name) > len(company_name) or domain.split(".")[0].lower() in company_name.lower():
-            company_name = struct_name
-
     return {
-        "company_name": company_name,
+        "company_name": clean_company_name(raw_title, url),
         "url": base_url + "/",
         "domain": domain,
         "phone": phones[0] if phones else "",
@@ -945,65 +738,11 @@ def scrape_company(url: str, vertical: Dict) -> Optional[Dict]:
         "all_emails": emails,
         "whatsapp": whatsapp or "",
         "services": extract_services(all_html, vertical),
-        "city": city,
+        "city": extract_city_from_html(all_html) or "",
         "contact_person": extract_person_name(all_html) or "",
         "company_size": detect_company_size(all_html) or "",
-        "instagram": instagram,
-        "years_in_business": years_in_biz,
-        "certifications": certifications,
-        "google_rating": structured.get("rating"),
-        "review_count": structured.get("review_count"),
+        "instagram": "",
     }
-
-
-# =============================================================================
-# FUZZY DEDUPLICATION HELPERS
-# =============================================================================
-
-def normalize_company_name(name: str) -> str:
-    """Normalize company name for fuzzy comparison.
-    Removes legal suffixes, lowercases, strips accents and special chars.
-    """
-    name = name.lower().strip()
-    # Remove legal suffixes
-    for suffix in [" s.a.s.", " s.a.s", " sas", " ltda.", " ltda", " s.a.", " s.a",
-                   " e.s.p.", " e.s.p", " esp", " & cia", " y cia"]:
-        name = name.replace(suffix, "")
-    # Remove accents
-    replacements = {"á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u", "ñ": "n"}
-    for old, new in replacements.items():
-        name = name.replace(old, new)
-    # Remove non-alphanumeric (keep spaces)
-    name = re.sub(r"[^a-z0-9\s]", "", name)
-    # Collapse whitespace
-    name = re.sub(r"\s+", " ", name).strip()
-    return name
-
-
-def is_fuzzy_duplicate(lead: Dict, existing_identifiers: Set[str], threshold: float = 0.85) -> Optional[str]:
-    """Check if a lead is a fuzzy duplicate of existing data.
-    Returns the reason for duplicate detection, or None if not a duplicate.
-    """
-    # Exact email match
-    email = lead.get("email", "").lower()
-    if email and f"EMAIL:{email}" in existing_identifiers:
-        return f"email exists: {email}"
-
-    # Fuzzy company name match
-    company_name = lead.get("company_name", "")
-    if company_name and len(company_name) >= 4:
-        normalized = normalize_company_name(company_name)
-        # Check exact normalized match first
-        if f"NAME:{normalized}" in existing_identifiers:
-            return f"exact name match: {company_name}"
-        # Check fuzzy match against all stored names
-        existing_names = [n[5:] for n in existing_identifiers if n.startswith("NAME:")]
-        for existing_name in existing_names:
-            ratio = SequenceMatcher(None, normalized, existing_name).ratio()
-            if ratio >= threshold:
-                return f"fuzzy name match ({ratio:.0%}): '{company_name}' ≈ existing"
-
-    return None
 
 
 # =============================================================================
@@ -1011,13 +750,12 @@ def is_fuzzy_duplicate(lead: Dict, existing_identifiers: Set[str], threshold: fl
 # =============================================================================
 
 def load_existing_domains(table: str) -> Set[str]:
-    """Single scan to get all existing domains, phones, NITs, emails, and company names from DynamoDB."""
+    """Single scan to get all existing domains, phones, and NITs from DynamoDB."""
     domains = set()
     start_key = None
     while True:
         cmd = ["aws", "dynamodb", "scan", "--table-name", table, "--region", AWS_REGION,
-               "--projection-expression", "Dominio,Website,Telefono,NIT,Email,NombreComercial",
-               "--select", "SPECIFIC_ATTRIBUTES"]
+               "--projection-expression", "Dominio,Website,Telefono,NIT", "--select", "SPECIFIC_ATTRIBUTES"]
         if start_key:
             cmd.extend(["--exclusive-start-key", json.dumps(start_key)])
         try:
@@ -1037,14 +775,6 @@ def load_existing_domains(table: str) -> Set[str]:
                 nit = item.get("NIT", {}).get("S", "")
                 if nit and len(nit) >= 6:
                     domains.add(f"NIT:{nit}")
-                # Track emails for dedup
-                email = item.get("Email", {}).get("S", "")
-                if email and "@" in email:
-                    domains.add(f"EMAIL:{email.lower()}")
-                # Track normalized company names for fuzzy dedup
-                name = item.get("NombreComercial", {}).get("S", "")
-                if name and len(name) >= 4:
-                    domains.add(f"NAME:{normalize_company_name(name)}")
             if not data.get("LastEvaluatedKey"):
                 break
             start_key = data["LastEvaluatedKey"]
@@ -1052,10 +782,8 @@ def load_existing_domains(table: str) -> Set[str]:
             break
     phone_count = sum(1 for d in domains if d.startswith("PHONE:"))
     nit_count = sum(1 for d in domains if d.startswith("NIT:"))
-    email_count = sum(1 for d in domains if d.startswith("EMAIL:"))
-    name_count = sum(1 for d in domains if d.startswith("NAME:"))
-    domain_count = len(domains) - phone_count - nit_count - email_count - name_count
-    log(f"  Loaded {domain_count} domains, {phone_count} phones, {nit_count} NITs, {email_count} emails, {name_count} names from CRM")
+    domain_count = len(domains) - phone_count - nit_count
+    log(f"  Loaded {domain_count} domains, {phone_count} phones, {nit_count} NITs from CRM")
     return domains
 
 
@@ -1136,42 +864,6 @@ def score_lead(lead: Dict, vertical: Dict) -> int:
     elif size == "pequeña":
         score += scoring.get("bonus_size_small", 0.25)
 
-    # --- Enhanced scoring signals ---
-
-    # Google/schema.org rating bonus
-    rating = lead.get("google_rating")
-    if rating and rating >= 4.0:
-        score += 0.5
-    elif rating and rating >= 3.5:
-        score += 0.25
-
-    # Review count (social proof)
-    review_count = lead.get("review_count", 0)
-    if review_count and review_count >= 20:
-        score += 0.3
-    elif review_count and review_count >= 5:
-        score += 0.15
-
-    # Years in business (established companies are better leads)
-    years = lead.get("years_in_business")
-    if years and years >= 10:
-        score += 0.5
-    elif years and years >= 5:
-        score += 0.3
-    elif years and years >= 2:
-        score += 0.15
-
-    # Certifications (signals professionalism and compliance)
-    certs = lead.get("certifications", [])
-    if len(certs) >= 3:
-        score += 0.5
-    elif len(certs) >= 1:
-        score += 0.25
-
-    # Has Instagram (active marketing = more likely to respond)
-    if lead.get("instagram"):
-        score += 0.15
-
     return min(5, max(1, int(round(score))))
 
 
@@ -1250,43 +942,49 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
     vstate = get_vertical_state(state, vertical_id)
     expire_known_domains(vstate)
 
+    # Multi-city: search CITIES_PER_RUN cities per execution
     city_index = vstate.get("city_index", 0) % len(cities)
-    city = cities[city_index]
-    next_city = cities[(city_index + 1) % len(cities)]
+    num_cities = min(CITIES_PER_RUN, len(cities))
+    target_cities = [cities[(city_index + i) % len(cities)] for i in range(num_cities)]
+    next_city = cities[(city_index + num_cities) % len(cities)]
 
-    log(f"Target city: {city} (index {city_index})")
+    log(f"Target cities: {target_cities} (starting index {city_index})")
 
     # PRE-FILTER: Load CRM domains early to avoid scraping known companies
     log("\n--- PRE-FILTER: LOADING CRM DOMAINS ---")
     existing_domains = load_existing_domains(table)
 
-    # PHASE 1: SEARCH
+    # PHASE 1: SEARCH (multiple cities)
     log("\n--- PHASE 1: SEARCH ---")
-    candidate_urls = search_city(city, vertical, vstate, crm_domains=existing_domains)
+    candidate_urls = []
+    for city in target_cities:
+        log(f"\n  >> Searching city: {city}")
+        city_urls = search_city(city, vertical, vstate, crm_domains=existing_domains)
+        candidate_urls.extend(city_urls)
+        log(f"  << {city}: {len(city_urls)} candidates")
+    # Deduplicate by domain
+    seen = set()
+    unique_urls = []
+    for u in candidate_urls:
+        d = get_root_domain(u)
+        if d not in seen:
+            seen.add(d)
+            unique_urls.append(u)
+    candidate_urls = unique_urls
+    log(f"Total unique candidates across {num_cities} cities: {len(candidate_urls)}")
 
-    # PHASE 2: SCRAPE (parallelized)
-    log("\n--- PHASE 2: SCRAPE & EXTRACT (parallel) ---")
+    # PHASE 2: SCRAPE
+    log("\n--- PHASE 2: SCRAPE & EXTRACT ---")
     enriched_leads = []
-    urls_to_scrape = candidate_urls[:MAX_LEADS_PER_RUN]
-    max_workers = min(3, len(urls_to_scrape))
-
-    def _scrape_one(url: str) -> Tuple[str, Optional[Dict]]:
-        """Wrapper for parallel scraping."""
-        return (url, scrape_company(url, vertical))
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(_scrape_one, url): url for url in urls_to_scrape}
-        for future in as_completed(futures):
-            try:
-                url, lead_data = future.result()
-                domain = get_root_domain(url)
-                if lead_data:
-                    enriched_leads.append(lead_data)
-                    log(f"  ✓ {domain} → {lead_data['company_name']} | Ph: {lead_data.get('phone', '-')} | Em: {lead_data.get('email', '-')}")
-                else:
-                    log(f"  ✗ {domain} → No useful data")
-            except Exception as e:
-                log(f"  ✗ Scrape error: {e}")
+    for url in candidate_urls[:MAX_LEADS_PER_RUN]:
+        log(f"  Scraping: {get_root_domain(url)}...")
+        lead_data = scrape_company(url, vertical)
+        if lead_data:
+            enriched_leads.append(lead_data)
+            log(f"    ✓ {lead_data['company_name']} | Ph: {lead_data.get('phone', '-')} | Em: {lead_data.get('email', '-')}")
+        else:
+            log(f"    ✗ No useful data")
+        time.sleep(random.uniform(1, 2))
 
     log(f"Leads with contact data: {len(enriched_leads)}")
 
@@ -1320,9 +1018,7 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
     for lead in qualified_leads:
         domain = lead.get("domain", "")
         phone = lead.get("phone", "")
-        email = lead.get("email", "").lower()
-
-        # Deduplication: check domain, phone, NIT, email, and fuzzy name
+        # Deduplication: check domain, phone, and NIT
         if domain in existing_domains:
             log(f"  Skip (domain exists): {lead['company_name']}")
             duplicates += 1
@@ -1331,27 +1027,11 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
             log(f"  Skip (phone exists): {lead['company_name']} ({phone})")
             duplicates += 1
             continue
-        if email and f"EMAIL:{email}" in existing_domains:
-            log(f"  Skip (email exists): {lead['company_name']} ({email})")
-            duplicates += 1
-            continue
-        # Fuzzy name dedup
-        fuzzy_reason = is_fuzzy_duplicate(lead, existing_domains)
-        if fuzzy_reason:
-            log(f"  Skip (fuzzy dup — {fuzzy_reason}): {lead['company_name']}")
-            duplicates += 1
-            continue
-
         if insert_lead(lead, table, vertical_id):
             inserted += 1
             existing_domains.add(domain)
             if phone:
                 existing_domains.add(f"PHONE:{phone}")
-            if email:
-                existing_domains.add(f"EMAIL:{email}")
-            normalized_name = normalize_company_name(lead["company_name"])
-            if normalized_name:
-                existing_domains.add(f"NAME:{normalized_name}")
             log(f"  ✓ Inserted: {lead['company_name']} (score {lead['score']})")
         else:
             duplicates += 1
@@ -1385,7 +1065,7 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
     send_telegram_report(qualified_leads, city, stats, vertical)
 
     # Update vertical state
-    vstate["city_index"] = (city_index + 1) % len(cities)
+    vstate["city_index"] = (city_index + num_cities) % len(cities)
     now_iso = datetime.now(timezone.utc).isoformat()
     known = vstate.get("known_domains", {})
     if isinstance(known, list):
@@ -1433,7 +1113,7 @@ def main():
     GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", GOOGLE_PLACES_API_KEY)
 
     log("=" * 60)
-    log("UNIFIED LEAD PIPELINE v6 — Enhanced Search + Scoring")
+    log("UNIFIED LEAD PIPELINE v5 — Multi-Vertical + LLM")
     log(f"LLM: {'enabled (' + LLM_MODEL + ')' if LLM_API_KEY else 'disabled (no API key)'}")
     log("=" * 60)
 

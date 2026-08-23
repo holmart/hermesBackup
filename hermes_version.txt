@@ -1,7 +1,7 @@
 version: 9cb456a9b
 branch: main
 commit: 9cb456a9b9cb29b8785b75f339d3ad1225fd9b2d
-snapshot_date: 2026-08-22T12:00:02Z
+snapshot_date: 2026-08-23T12:00:03Z
 repo: https://github.com/NousResearch/hermes-agent.git
 install_method: git clone + uv pip install -e .
 python: 3.11

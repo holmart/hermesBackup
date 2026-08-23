@@ -1,114 +1,162 @@
 #!/usr/bin/env python3
 """
-CRM Internal Field Enrichment — v2
-====================================
+CRM Internal Field Enrichment — v2 (Enhanced)
+==============================================
 Updates RepresentanteLegal, Telefono, Email from internal CRM fields.
-Does NOT require external APIs or web scraping.
+Focus: name of representative legal, phone, email. NIT is NOT required.
 
-Improvements over v1:
-1. Paginates DynamoDB scan (handles CRM > 1MB)
-2. Uses ContactoPrincipal as source for RepresentanteLegal
-3. Prioritizes business emails over generic ones
-4. Sends Telegram summary with updated companies
-5. Normalizes phone format to +57...
-6. Better logging
+New in v2:
+- Full DynamoDB pagination (never misses records)
+- Parallel updates with ThreadPoolExecutor (3 workers)
+- Colombian phone validation and normalization (+57XXXXXXXXXX)
+- Retry with exponential backoff on throttling
+- Telegram report summary at end of run
+- LLM fallback for ambiguous name extraction
+- Fixed datetime.utcnow() deprecation
 
-Runs via Hermes cron: Mon/Wed/Fri at 09:00 UTC
+Runs L-M-V at 9:00 AM UTC via Hermes cron.
 """
 import subprocess
 import json
 import re
-import datetime
 import sys
 import os
+import time
+import random
 import unicodedata
-
+import urllib.request
+import urllib.error
+from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional, Dict, List, Tuple
 
 # =============================================================================
-# CONFIG
+# CONFIGURATION
 # =============================================================================
 
-TABLE = "sifagent-crm-clients"
+TABLE_NAME = os.environ.get("CRM_TABLE", "sifagent-crm-clients")
 REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
 HERMES_HOME = os.environ.get("HERMES_HOME", "/home/ubuntu/.hermes")
+DRY_RUN = os.environ.get("DRY_RUN", "").lower() == "true"
+MAX_WORKERS = 3
+
+# Telegram
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_ALLOWED_USERS", "").split(",")[0].strip()
+
+# LLM
+LLM_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+LLM_API_BASE = os.environ.get("LLM_API_BASE", "https://openrouter.ai/api/v1")
+LLM_MODEL = os.environ.get("LLM_MODEL", "openai/gpt-4o-mini")
+
 
 # =============================================================================
-# PHONE / EMAIL VALIDATION
+# AWS CLI HELPERS
 # =============================================================================
 
-def normalize_phone(val: str) -> str:
-    """Normalize a Colombian phone to +57XXXXXXXXXX format."""
-    if not val:
-        return ""
-    s = re.sub(r"[\s\-\(\)\.]", "", val.strip())
-    if s.startswith("+"):
-        s = s[1:]
+def run_aws_cmd(cmd: List[str]) -> Optional[Dict]:
+    """Run AWS CLI command and return parsed JSON."""
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
+        return json.loads(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"AWS CLI error: {e.stderr[:200]}")
+        return None
+    except (json.JSONDecodeError, subprocess.TimeoutExpired) as e:
+        print(f"Error: {e}")
+        return None
+
+
+def scan_all_items() -> List[Dict]:
+    """Full paginated scan of the CRM table."""
+    items = []
+    start_key = None
+    page = 0
+
+    while True:
+        cmd = [
+            "aws", "dynamodb", "scan",
+            "--table-name", TABLE_NAME,
+            "--region", REGION,
+            "--projection-expression",
+            "PK, SK, RepresentanteLegal, Responsable, CargoResponsable, "
+            "Telefono, TelefonosExtra, Email, EmailExtra, NombreComercial",
+        ]
+        if start_key:
+            cmd.extend(["--exclusive-start-key", json.dumps(start_key)])
+
+        data = run_aws_cmd(cmd)
+        if not data:
+            break
+
+        items.extend(data.get("Items", []))
+        page += 1
+
+        start_key = data.get("LastEvaluatedKey")
+        if not start_key:
+            break
+
+    print(f"  Scanned {page} page(s), {len(items)} total items")
+    return items
+
+
+# =============================================================================
+# PHONE VALIDATION (Colombian-specific)
+# =============================================================================
+
+def normalize_colombian_phone(raw: str) -> Optional[str]:
+    """Validate and normalize to +57XXXXXXXXXX format. Returns None if invalid."""
+    if not raw or not isinstance(raw, str):
+        return None
+
+    digits = re.sub(r"\D", "", raw.strip())
+
     # Remove country code if present
-    if s.startswith("57") and len(s) == 12:
-        digits = s[2:]
-    elif len(s) == 10 and s.startswith("3"):
-        digits = s
-    elif len(s) == 7:  # landline
-        return val.strip()  # keep as-is
-    else:
-        return val.strip()
+    if digits.startswith("57") and len(digits) >= 12:
+        digits = digits[2:]
 
-    if digits.startswith("3") and len(digits) == 10:
-        # Reject repetitive
+    # Valid Colombian mobile: 10 digits starting with 3
+    if len(digits) == 10 and digits.startswith("3"):
+        # Reject repetitive numbers (obvious placeholders)
         if len(set(digits)) <= 2:
-            return ""
+            return None
+        pair = digits[:2]
+        if pair * 5 == digits:
+            return None
         return f"+57{digits}"
-    return val.strip()
+
+    # Valid Colombian landline: 7 digits (some cities)
+    if len(digits) == 7 and not digits.startswith("0"):
+        if len(set(digits)) <= 2:
+            return None
+        return digits  # Return without +57 prefix for landlines
+
+    return None
 
 
 def is_valid_phone(val: str) -> bool:
-    """Check if phone is valid and non-placeholder."""
-    if not val or not isinstance(val, str):
-        return False
-    s = re.sub(r"[\s\-\(\)\+\.]", "", val.strip())
-    if not s.isdigit():
-        return False
-    if not (7 <= len(s) <= 15):
-        return False
-    if len(set(s)) <= 2:
-        return False
-    return True
+    """Check if a phone number is valid (any format)."""
+    return normalize_colombian_phone(val) is not None
 
+
+# =============================================================================
+# EMAIL VALIDATION
+# =============================================================================
 
 def is_valid_email(val: str) -> bool:
     """Simple email validation."""
     if not val or not isinstance(val, str):
         return False
     pattern = r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"
-    return re.match(pattern, val.strip()) is not None
-
-
-# Email priority: lower index = better for prospecting
-EMAIL_PRIORITY_PREFIXES = [
-    "gerencia", "gerente", "director", "admin", "comercial",
-    "contacto", "info", "ventas", "servicio",
-]
-
-GENERIC_EMAIL_PREFIXES = {"info", "contacto", "ventas", "servicio", "soporte", "noreply", "no-reply"}
-
-
-def email_priority_score(email: str) -> int:
-    """Lower score = better email for prospecting."""
-    if not email:
-        return 99
-    prefix = email.split("@")[0].lower()
-    for i, p in enumerate(EMAIL_PRIORITY_PREFIXES):
-        if prefix.startswith(p):
-            return i
-    return 50  # unknown prefix, middle priority
-
-
-def is_generic_email(email: str) -> bool:
-    """Check if email is a generic role-based address."""
-    if not email:
-        return True
-    prefix = email.split("@")[0].lower()
-    return prefix in GENERIC_EMAIL_PREFIXES
+    if not re.match(pattern, val.strip()):
+        return False
+    # Reject placeholder domains
+    domain = val.split("@")[1].lower()
+    placeholders = {"empresa.com", "example.com", "test.com", "correo.com",
+                    "mail.com", "domain.com", "tu-dominio.com"}
+    if domain in placeholders:
+        return False
+    return True
 
 
 # =============================================================================
@@ -122,26 +170,39 @@ CARGO_STOPWORDS = {
     "representante", "contacto", "servicio", "comercial", "ventas",
     "control", "operaciones", "producción", "calidad", "logística",
     "recursos", "talento", "humano", "finanzas", "contabilidad",
-    "legal", "jurídico", "marketing", "soporte", "tecnico", "técnico",
-    "ingeniero", "doctor", "dr.", "dr", "sr.", "sr", "sra.", "sra",
-    "lic.", "lic", "ing.", "ing",
+    "auditoría", "legal", "jurídico", "marketing", "publicidad",
+    "soporte", "tecnico", "técnico", "ingeniero", "ingeniería",
+    "arquitecto", "arquitectura", "doctor", "dr.", "dr", "sr.", "sr",
+    "sra.", "sra", "lic.", "lic", "ing.", "ing", "mba", "phd",
 }
 
 NAME_INTERNAL_STOPWORDS = {
-    "de", "del", "la", "las", "los", "san", "santa", "y", "e", "el",
+    "de", "del", "la", "las", "los", "san", "santa",
+    "y", "e", "et", "el", "lo",
 }
 
 FORBIDDEN_NAME_TOKENS = {
-    "lavado", "desinfeccion", "tanques", "agua", "control", "plagas",
-    "servicio", "mantenimiento", "limpieza", "fumigacion", "fumigación",
-    "sanitizacion", "desratizacion", "certificacion", "seguridad",
-    "higiene", "ambiental", "industrial", "comercial", "residencial",
-    "domestico", "corporativo", "nacional", "internacional",
-    "empresa", "empresas", "colombia", "bogota", "medellin", "cali",
+    "lavado", "desinfeccion", "tanques", "agua", "potable", "control", "plagas",
+    "servicio", "mantenimiento", "limpieza", "fumigacion", "electricidad",
+    "fontaneria", "hidraulica", "construccion", "obra", "reparaciones",
+    "instalaciones", "montaje", "cableado", "electricista", "fontanero",
+    "revision", "inspeccion", "certificacion", "emergencia", "urgencia",
+    "garantia", "asesoria", "consultoria", "proyecto", "diseño",
+    "vigilancia", "seguridad", "higiene", "ambiental", "industrial",
+    "comercial", "domestico", "corporativo", "institucional", "municipal",
+    # Cities (should not appear in a person name)
+    "bogota", "medellin", "cali", "barranquilla", "cartagena", "cucuta",
+    "bucaramanga", "pereira", "manizales", "ibague", "villavicencio",
+    "santa", "marta", "neiva", "armenia", "popayan", "colombia",
+    # Company-type words
+    "fumigaciones", "fumigacion", "extermi", "aire", "acondicionado",
+    "refrigeracion", "electrico", "electricos", "soluciones", "servicios",
+    "grupo", "empresa", "compania", "asociados", "hermanos",
 }
 
 
 def strip_accents(s: str) -> str:
+    """Remove accents for comparison."""
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
@@ -154,14 +215,14 @@ def looks_like_person_name(val: str) -> bool:
         return False
 
     raw_tokens = val.split()
-    if len(raw_tokens) < 2 or len(raw_tokens) > 5:
+    if len(raw_tokens) < 2:
         return False
 
     for i, tok in enumerate(raw_tokens):
         if not tok:
             return False
         core = tok.rstrip(".")
-        if not core or not core[0].isalpha():
+        if not core:
             return False
         if core[0].isdigit():
             return False
@@ -184,144 +245,47 @@ def looks_like_person_name(val: str) -> bool:
     return True
 
 
-def extract_name_from_email(email: str):
-    """Attempt to extract a person's name from email local-part."""
+def extract_name_from_email(email: str) -> Optional[str]:
+    """Extract person name from email local-part."""
     if not email or "@" not in email:
         return None
     local = email.split("@")[0]
     if not local:
         return None
+
     local = re.sub(r"[._\-]", " ", local)
     parts = [p for p in local.split() if p]
-    if not parts or len(parts) < 2:
+    if not parts or any(p.isdigit() for p in parts):
         return None
-    if any(p.isdigit() for p in parts):
+    # Reject if any part is too short (likely abbreviation, not a name)
+    if any(len(p) < 3 for p in parts):
         return None
-    candidate = " ".join(p.capitalize() for p in parts)
+    # Reject if looks like a company name or service
+    company_signals = {"info", "contacto", "admin", "ventas", "comercial",
+                       "gerencia", "soporte", "servicio", "empresa"}
+    if any(p.lower() in company_signals for p in parts):
+        return None
+
+    titled = [p.capitalize() for p in parts]
+    candidate = " ".join(titled)
     if looks_like_person_name(candidate):
         return candidate
+
+    if len(parts) >= 2:
+        filtered = [p for p in parts if len(p) > 2]
+        if len(filtered) >= 2:
+            candidate2 = " ".join([p.capitalize() for p in filtered])
+            if looks_like_person_name(candidate2):
+                return candidate2
     return None
 
 
-# =============================================================================
-# DYNAMO HELPERS
-# =============================================================================
-
-def get_attr(item, key):
-    d = item.get(key, {})
-    return d.get("S") if isinstance(d, dict) else None
-
-
-def scan_all_items():
-    """Paginated scan of the full CRM table."""
-    items = []
-    start_key = None
-    while True:
-        cmd = [
-            "aws", "dynamodb", "scan",
-            "--table-name", TABLE,
-            "--region", REGION,
-            "--projection-expression",
-            "PK, SK, RepresentanteLegal, Responsable, CargoResponsable, ContactoPrincipal, Telefono, TelefonosExtra, Email, EmailExtra, EmailContacto, NombreComercial",
-        ]
-        if start_key:
-            cmd.extend(["--exclusive-start-key", json.dumps(start_key)])
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
-            data = json.loads(result.stdout)
-            items.extend(data.get("Items", []))
-            start_key = data.get("LastEvaluatedKey")
-            if not start_key:
-                break
-        except Exception as e:
-            print(f"Scan error: {e}")
-            break
-    return items
-
-
-def update_item(pk, sk, changes):
-    """Update fields in DynamoDB."""
-    now = datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
-    changes["FechaActualizacion"] = now
-    if "RepresentanteLegal" in changes:
-        changes["FuenteRepLegal"] = "internal_fields_v2"
-
-    set_clauses = []
-    expr_vals = {}
-    for i, (field, val) in enumerate(changes.items()):
-        placeholder = f":v{i}"
-        set_clauses.append(f"{field} = {placeholder}")
-        expr_vals[placeholder] = {"S": val}
-
-    cmd = [
-        "aws", "dynamodb", "update-item",
-        "--table-name", TABLE,
-        "--region", REGION,
-        "--key", json.dumps({"PK": {"S": pk}, "SK": {"S": sk}}),
-        "--update-expression", "SET " + ", ".join(set_clauses),
-        "--expression-attribute-values", json.dumps(expr_vals),
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    return result.returncode == 0
-
-
-# =============================================================================
-# TELEGRAM
-# =============================================================================
-
-def send_telegram_summary(updated_companies, total, skipped, failed):
-    """Send a brief Telegram report with enrichment results."""
-    env_file = os.path.join(HERMES_HOME, ".env")
-    bot_token = ""
-    chat_id = ""
-    if os.path.isfile(env_file):
-        with open(env_file) as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("TELEGRAM_BOT_TOKEN="):
-                    bot_token = line.split("=", 1)[1].strip().strip("\"'")
-                elif line.startswith("TELEGRAM_ALLOWED_USERS="):
-                    chat_id = line.split("=", 1)[1].strip().strip("\"'").split(",")[0]
-
-    if not bot_token or not chat_id:
-        return
-
-    header = f"🔄 *Enriquecimiento CRM — {datetime.datetime.utcnow().strftime('%Y-%m-%d')}*\n"
-    header += f"📊 Total: {total} | Actualizados: {len(updated_companies)} | Sin cambios: {skipped} | Errores: {failed}\n\n"
-
-    body = ""
-    if updated_companies:
-        body = "*Empresas actualizadas:*\n"
-        for name, fields in updated_companies[:10]:
-            body += f"• {name}: {', '.join(fields)}\n"
-        if len(updated_companies) > 10:
-            body += f"_...y {len(updated_companies) - 10} más_\n"
-    else:
-        body = "_No hubo registros para actualizar._\n"
-
-    message = header + body
-    payload = json.dumps({
-        "chat_id": chat_id, "text": message,
-        "parse_mode": "Markdown", "disable_web_page_preview": True,
-    })
-    cmd = [
-        "curl", "-s", "-X", "POST",
-        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-        "-H", "Content-Type: application/json",
-        "-d", payload,
-    ]
-    subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-
-
-# =============================================================================
-# MAIN LOGIC
-# =============================================================================
-
-def is_empty_or_generic(val):
+def is_empty_or_generic(val: Optional[str]) -> bool:
+    """Check if value is empty, None, or a generic placeholder."""
     if val is None:
         return True
     val = val.strip()
-    if not val or val.upper() in ["PENDIENTE", "N/A", "NULL", "0", "0000000000"]:
+    if val == "" or val.upper() in ["PENDIENTE", "N/A", "NULL", "0", "0000000000"]:
         return True
     generic = [
         "contacto", "gerencia", "servicio al cliente", "comercial", "ventas",
@@ -331,127 +295,339 @@ def is_empty_or_generic(val):
         "gerencia administrativa", "administrativo", "gerencia de operaciones",
         "direccion", "dirección", "coordinacion", "coordinación",
     ]
-    return val.lower() in generic
+    if val.lower() in generic:
+        return True
+    return False
 
+
+# =============================================================================
+# LLM FALLBACK FOR NAME EXTRACTION
+# =============================================================================
+
+def extract_name_with_llm(responsable: str, cargo: str, company: str) -> Optional[str]:
+    """Use LLM to extract a person name from ambiguous fields."""
+    if not LLM_API_KEY:
+        return None
+
+    prompt = f"""De los siguientes datos de una empresa, extrae SOLO el nombre de la persona (nombre y apellido).
+Si no hay un nombre de persona claro, responde exactamente "NONE".
+
+Empresa: {company}
+Campo Responsable: {responsable}
+Campo Cargo: {cargo}
+
+Responde SOLO con el nombre de la persona (ej: "Juan Carlos Gómez") o "NONE":"""
+
+    payload = json.dumps({
+        "model": LLM_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 50,
+        "temperature": 0.1,
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{LLM_API_BASE}/chat/completions",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {LLM_API_KEY}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+            answer = data["choices"][0]["message"]["content"].strip()
+            if answer.upper() == "NONE" or len(answer) < 4:
+                return None
+            # Validate the LLM response looks like a name
+            if looks_like_person_name(answer):
+                return answer
+            return None
+    except Exception:
+        return None
+
+
+# =============================================================================
+# UPDATE WITH RETRY
+# =============================================================================
+
+def update_company_fields(pk: str, sk: str, changes: Dict[str, str]) -> bool:
+    """Update fields in DynamoDB with retry on throttling."""
+    if DRY_RUN:
+        fields_str = ", ".join(f"{k}='{v}'" for k, v in changes.items())
+        print(f"    [DRY RUN] {pk}: {fields_str}")
+        return True
+
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds") + "Z"
+    changes["FechaActualizacion"] = now
+    if "RepresentanteLegal" in changes:
+        changes["FuenteRepLegal"] = "internal_fields_v2"
+
+    # Build update expression
+    set_clauses = []
+    expr_vals = {}
+    for i, (field, new_val) in enumerate(changes.items()):
+        placeholder = f":v{i}"
+        set_clauses.append(f"{field} = {placeholder}")
+        expr_vals[placeholder] = {"S": new_val}
+    update_expr = "SET " + ", ".join(set_clauses)
+
+    key = {"PK": {"S": pk}, "SK": {"S": sk}}
+    cmd = [
+        "aws", "dynamodb", "update-item",
+        "--table-name", TABLE_NAME,
+        "--region", REGION,
+        "--key", json.dumps(key),
+        "--update-expression", update_expr,
+        "--expression-attribute-values", json.dumps(expr_vals),
+    ]
+
+    for attempt in range(1, 4):
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                return True
+            stderr = result.stderr or ""
+            if "Throughput" in stderr or "Throttl" in stderr:
+                wait = 2 ** attempt + random.uniform(0, 1)
+                time.sleep(wait)
+                continue
+            # Non-throttle error
+            if attempt < 3:
+                time.sleep(1)
+                continue
+            return False
+        except subprocess.TimeoutExpired:
+            time.sleep(2 ** attempt)
+            continue
+    return False
+
+
+# =============================================================================
+# PROCESS SINGLE ITEM
+# =============================================================================
+
+def get_attr(item: Dict, key: str) -> Optional[str]:
+    """Extract string value from DynamoDB item attribute."""
+    d = item.get(key, {})
+    return d.get("S") if isinstance(d, dict) else None
+
+
+def process_item(item: Dict) -> Tuple[str, Dict[str, str]]:
+    """Analyze one CRM item and return (pk, changes_dict). Empty dict means no changes."""
+    pk = get_attr(item, "PK") or ""
+    sk = get_attr(item, "SK") or ""
+    rep = get_attr(item, "RepresentanteLegal")
+    resp = get_attr(item, "Responsable")
+    cargo = get_attr(item, "CargoResponsable")
+    company = get_attr(item, "NombreComercial") or pk
+    tel = get_attr(item, "Telefono")
+    tel_extra = get_attr(item, "TelefonosExtra")
+    email = get_attr(item, "Email")
+    email_extra = get_attr(item, "EmailExtra")
+
+    changes = {}
+
+    # --- 1. RepresentanteLegal ---
+    cargo_val = cargo.strip().lower() if cargo else ""
+    needs_name = is_empty_or_generic(rep) or not looks_like_person_name(rep)
+
+    if cargo_val == "representante legal":
+        if not is_empty_or_generic(resp) and looks_like_person_name(resp):
+            changes["RepresentanteLegal"] = resp.strip()
+    elif needs_name:
+        if not is_empty_or_generic(resp) and looks_like_person_name(resp):
+            changes["RepresentanteLegal"] = resp.strip()
+        else:
+            # Try email-based extraction
+            name_from_email = extract_name_from_email(email)
+            if not name_from_email:
+                name_from_email = extract_name_from_email(email_extra)
+            if name_from_email:
+                changes["RepresentanteLegal"] = name_from_email
+            elif resp and not is_empty_or_generic(resp) and LLM_API_KEY:
+                # LLM fallback for ambiguous cases
+                llm_name = extract_name_with_llm(resp, cargo or "", company)
+                if llm_name:
+                    changes["RepresentanteLegal"] = llm_name
+
+    # --- 2. Telefono (normalize to Colombian format) ---
+    current_phone_normalized = normalize_colombian_phone(tel) if tel else None
+    if not current_phone_normalized:
+        # Try TelefonosExtra — may have multiple, pick first valid
+        if tel_extra:
+            for candidate in re.split(r"[,;|\s]+", tel_extra):
+                normalized = normalize_colombian_phone(candidate.strip())
+                if normalized:
+                    changes["Telefono"] = normalized
+                    break
+    elif current_phone_normalized != (tel or "").strip():
+        # Current phone is valid but not normalized — normalize it
+        changes["Telefono"] = current_phone_normalized
+
+    # --- 3. Email ---
+    if not is_valid_email(email):
+        if is_valid_email(email_extra):
+            changes["Email"] = email_extra.strip().lower()
+
+    return (pk, sk, changes)
+
+
+# =============================================================================
+# TELEGRAM REPORT
+# =============================================================================
+
+def send_telegram_summary(updated: int, skipped: int, failed: int,
+                          llm_used: int, examples: List[str]):
+    """Send enrichment summary via Telegram."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+
+    msg = f"🔄 *CRM Enrichment v2 — {datetime.now(timezone.utc).strftime('%Y-%m-%d')}*\n\n"
+    msg += f"📊 Resultados:\n"
+    msg += f"  ✅ Actualizados: {updated}\n"
+    msg += f"  ⏭️ Sin cambios: {skipped}\n"
+    if failed:
+        msg += f"  ❌ Fallidos: {failed}\n"
+    if llm_used:
+        msg += f"  🤖 LLM assists: {llm_used}\n"
+
+    if examples:
+        msg += f"\n📝 Ejemplos:\n"
+        for ex in examples[:5]:
+            msg += f"  • {ex}\n"
+
+    if DRY_RUN:
+        msg += "\n⚠️ _Modo DRY RUN — sin cambios reales_"
+
+    payload = json.dumps({
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": msg,
+        "parse_mode": "Markdown",
+    })
+    cmd = [
+        "curl", "-s", "-X", "POST",
+        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+        "-H", "Content-Type: application/json",
+        "-d", payload,
+    ]
+    try:
+        subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+    except Exception:
+        pass
+
+
+# =============================================================================
+# MAIN
+# =============================================================================
 
 def main():
-    print("Starting internal field enrichment v2 (name, phone, email)...")
+    # Load .env
+    env_file = os.path.join(HERMES_HOME, ".env")
+    if os.path.isfile(env_file):
+        try:
+            with open(env_file, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, _, value = line.partition("=")
+                        key = key.strip()
+                        value = value.strip().strip('"').strip("'")
+                        if key and value and key not in os.environ:
+                            os.environ[key] = value
+        except Exception:
+            pass
+
+    # Reload env-dependent globals
+    global TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, LLM_API_KEY
+    TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", TELEGRAM_BOT_TOKEN)
+    TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_ALLOWED_USERS", TELEGRAM_CHAT_ID).split(",")[0].strip()
+    LLM_API_KEY = os.environ.get("OPENROUTER_API_KEY", LLM_API_KEY)
+
     print("=" * 60)
-    print("Improvements: pagination, ContactoPrincipal, email priority, Telegram report")
+    print("CRM Internal Field Enrichment v2")
+    print(f"Table: {TABLE_NAME} | Region: {REGION}")
+    print(f"LLM: {'enabled' if LLM_API_KEY else 'disabled'}")
+    print(f"Mode: {'DRY RUN' if DRY_RUN else 'LIVE'}")
     print("=" * 60)
     print()
 
-    # Scan all items (paginated)
+    # --- Phase 1: Scan ---
+    print("--- Phase 1: Scanning CRM ---")
     items = scan_all_items()
-    print(f"Total companies in CRM: {len(items)}")
+    if not items:
+        print("ERROR: No items found or scan failed")
+        return 1
 
-    updated_companies = []  # (name, [fields changed])
-    skipped = 0
-    failed = 0
+    # --- Phase 2: Process & Determine Changes ---
+    print("\n--- Phase 2: Analyzing fields ---")
+    to_update = []  # List of (pk, sk, changes)
 
     for item in items:
-        pk = get_attr(item, "PK")
-        sk = get_attr(item, "SK")
-        nombre = get_attr(item, "NombreComercial") or pk or "?"
+        pk, sk, changes = process_item(item)
+        if changes:
+            to_update.append((pk, sk, changes))
 
-        rep = get_attr(item, "RepresentanteLegal")
-        resp = get_attr(item, "Responsable")
-        cargo = get_attr(item, "CargoResponsable")
-        contacto_principal = get_attr(item, "ContactoPrincipal")
-        tel = get_attr(item, "Telefono")
-        tel_extra = get_attr(item, "TelefonosExtra")
-        email = get_attr(item, "Email")
-        email_extra = get_attr(item, "EmailExtra")
-        email_contacto = get_attr(item, "EmailContacto")
+    print(f"  Items needing update: {len(to_update)} / {len(items)}")
 
-        changes = {}
+    # --- Phase 3: Apply Updates (parallel) ---
+    print(f"\n--- Phase 3: Applying updates ({MAX_WORKERS} workers) ---")
+    updated_count = 0
+    failed_count = 0
+    llm_count = 0
+    examples = []
 
-        # --- 1. RepresentanteLegal ---
-        needs_rep = is_empty_or_generic(rep) or not looks_like_person_name(rep or "")
+    def _do_update(args):
+        pk, sk, changes = args
+        success = update_company_fields(pk, sk, changes)
+        return (pk, changes, success)
 
-        if needs_rep:
-            # Priority order for name sources:
-            candidates = []
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {executor.submit(_do_update, item): item for item in to_update}
+        for future in as_completed(futures):
+            try:
+                pk, changes, success = future.result()
+                if success:
+                    updated_count += 1
+                    # Track examples
+                    fields = list(changes.keys())
+                    fields = [f for f in fields if f not in ("FechaActualizacion", "FuenteRepLegal")]
+                    if len(examples) < 5 and fields:
+                        ex = f"{pk[:30]}: {', '.join(f'{k}={changes[k][:20]}' for k in fields)}"
+                        examples.append(ex)
+                    if "RepresentanteLegal" in changes and "FuenteRepLegal" in changes:
+                        if changes.get("FuenteRepLegal") == "internal_fields_v2":
+                            pass  # counted as regular
+                else:
+                    failed_count += 1
+            except Exception as e:
+                failed_count += 1
 
-            # a) CargoResponsable == "representante legal" → Responsable is the name
-            if cargo and cargo.strip().lower() == "representante legal":
-                if resp and looks_like_person_name(resp):
-                    candidates.append(resp)
+    skipped_count = len(items) - len(to_update)
 
-            # b) Responsable field directly
-            if resp and looks_like_person_name(resp):
-                candidates.append(resp)
-
-            # c) ContactoPrincipal (from pipeline v5)
-            if contacto_principal and looks_like_person_name(contacto_principal):
-                candidates.append(contacto_principal)
-
-            # d) Extract from email
-            for em in [email, email_extra, email_contacto]:
-                name = extract_name_from_email(em)
-                if name:
-                    candidates.append(name)
-
-            # Pick first valid candidate
-            if candidates:
-                changes["RepresentanteLegal"] = candidates[0]
-
-        # --- 2. Telefono ---
-        if not is_valid_phone(tel or ""):
-            # Try TelefonosExtra
-            if tel_extra:
-                # May contain multiple, take first valid
-                for part in re.split(r"[,;|]", tel_extra):
-                    normalized = normalize_phone(part.strip())
-                    if is_valid_phone(normalized):
-                        changes["Telefono"] = normalized
-                        break
-        else:
-            # Normalize existing phone
-            normalized = normalize_phone(tel)
-            if normalized != tel and is_valid_phone(normalized):
-                changes["Telefono"] = normalized
-
-        # --- 3. Email ---
-        # Upgrade generic email if a better one exists
-        current_email = email or ""
-        all_emails = [e for e in [email, email_extra, email_contacto] if e and is_valid_email(e)]
-
-        if not is_valid_email(current_email):
-            # No valid main email — pick best available
-            if all_emails:
-                best = min(all_emails, key=email_priority_score)
-                changes["Email"] = best
-        elif is_generic_email(current_email) and len(all_emails) > 1:
-            # Main email is generic — is there a better one?
-            non_generic = [e for e in all_emails if not is_generic_email(e) and e != current_email]
-            if non_generic:
-                best = min(non_generic, key=email_priority_score)
-                if email_priority_score(best) < email_priority_score(current_email):
-                    changes["Email"] = best
-
-        # --- Apply changes ---
-        if not changes:
-            skipped += 1
-            continue
-
-        if update_item(pk, sk, changes):
-            updated_companies.append((nombre, list(changes.keys())))
-        else:
-            failed += 1
-
-    print()
-    print("=" * 60)
+    # --- Phase 4: Report ---
+    print("\n" + "=" * 60)
     print("Enrichment completed!")
-    print(f"  Updated: {len(updated_companies)}")
-    print(f"  Skipped: {skipped}")
-    print(f"  Failed:  {failed}")
+    print(f"  Total scanned: {len(items)}")
+    print(f"  Updated:       {updated_count}")
+    print(f"  Skipped:       {skipped_count}")
+    print(f"  Failed:        {failed_count}")
+    if DRY_RUN:
+        print("\n  ⚠️ DRY RUN — no database changes were made")
+    print("=" * 60)
 
     # Send Telegram summary
-    send_telegram_summary(updated_companies, len(items), skipped, failed)
+    send_telegram_summary(updated_count, skipped_count, failed_count, llm_count, examples)
 
-    return 0 if failed == 0 else 1
+    return 0 if failed_count == 0 else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        print(f"FATAL ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
