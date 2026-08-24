@@ -162,7 +162,7 @@
   "query_offset": 3,
   "verticals": {
     "fumigacion": {
-      "city_index": 12,
+      "city_index": 13,
       "known_domains": {
         "duckduckgo.com": "2026-08-16T15:52:37.891582+00:00",
         "fumycontrol.co": "2026-08-16T15:52:37.891582+00:00",
@@ -266,12 +266,22 @@
         "exonaproyectos.com": "2026-08-22T15:10:53.536830+00:00",
         "lavanderiahospitalaria.com": "2026-08-22T15:10:53.536830+00:00",
         "ecolplag.webnode.com.co": "2026-08-22T15:10:53.536830+00:00",
-        "fumigacionescucuta.com": "2026-08-22T15:10:53.536830+00:00"
+        "fumigacionescucuta.com": "2026-08-22T15:10:53.536830+00:00",
+        "fumigacionesdelhuila.com": "2026-08-23T13:02:16.944976+00:00",
+        "jsilvaingeneria.com": "2026-08-23T13:02:16.944976+00:00",
+        "fumiplagasinstitucionales.com": "2026-08-23T13:02:16.944976+00:00",
+        "fumigacionesespecializadas.principalwebsite.com": "2026-08-23T13:02:16.944976+00:00",
+        "maxiplagas-del-huila.ueniweb.com": "2026-08-23T13:02:16.944976+00:00",
+        "fumiprax.com": "2026-08-23T13:02:16.944976+00:00",
+        "fumiespray.com": "2026-08-23T13:02:16.944976+00:00",
+        "fumigacionesneiva.com": "2026-08-23T13:02:16.944976+00:00",
+        "coplagroup.com": "2026-08-23T13:02:16.944976+00:00",
+        "uruservice.com": "2026-08-23T13:02:16.944976+00:00"
       },
       "query_offset": 0
     },
     "hvac": {
-      "city_index": 9,
+      "city_index": 10,
       "known_domains": {
         "duckduckgo.com": "2026-08-18T13:33:18.499153+00:00",
         "aireacondicionadosas.com": "2026-08-18T13:33:18.499153+00:00",
@@ -347,12 +357,22 @@
         "airesacondicionadosbucaramanga.com": "2026-08-22T13:35:30.446297+00:00",
         "emincol.com": "2026-08-22T13:35:30.446297+00:00",
         "nexdu.com": "2026-08-22T13:35:30.446297+00:00",
-        "frioacerossegovia.com": "2026-08-22T13:35:30.446297+00:00"
+        "frioacerossegovia.com": "2026-08-22T13:35:30.446297+00:00",
+        "refrialaskavillavo.com": "2026-08-23T13:31:57.851662+00:00",
+        "aire-acondicionado-villavicencio.webnode.es": "2026-08-23T13:31:57.851662+00:00",
+        "inversionesfriocentry.com": "2026-08-23T13:31:57.851662+00:00",
+        "friocenterjs.com": "2026-08-23T13:31:57.851662+00:00",
+        "abacentecrefrigeracion.com.co": "2026-08-23T13:31:57.851662+00:00",
+        "188.126.114.215": "2026-08-23T13:31:57.851662+00:00",
+        "climatizacionsas.com": "2026-08-23T13:31:57.851662+00:00",
+        "planetacolombia.com": "2026-08-23T13:31:57.851662+00:00",
+        "refrielectricos.com.co": "2026-08-23T13:31:57.851662+00:00",
+        "gpsegurosenrefrigeracion.com": "2026-08-23T13:31:57.851662+00:00"
       },
       "query_offset": 0
     },
     "electrico": {
-      "city_index": 9,
+      "city_index": 10,
       "known_domains": {
         "santanaingenieria.com": "2026-08-18T14:04:04.308320+00:00",
         "cieenergy.com": "2026-08-18T14:04:04.308320+00:00",
@@ -428,7 +448,17 @@
         "colombia.com.co": "2026-08-22T14:05:42.076306+00:00",
         "ocertificc.com": "2026-08-22T14:05:42.076306+00:00",
         "certificadosretie.com": "2026-08-22T14:05:42.076306+00:00",
-        "certiretie.com": "2026-08-22T14:05:42.076306+00:00"
+        "certiretie.com": "2026-08-22T14:05:42.076306+00:00",
+        "wa.me": "2026-08-23T14:01:32.511959+00:00",
+        "iaelectric.co": "2026-08-23T14:01:32.511959+00:00",
+        "etingenieros.com.co": "2026-08-23T14:01:32.511959+00:00",
+        "intelect.com.co": "2026-08-23T14:01:32.511959+00:00",
+        "llavesychips.shop": "2026-08-23T14:01:32.511959+00:00",
+        "construccionesdbr.com": "2026-08-23T14:01:32.511959+00:00",
+        "cotiwa.com": "2026-08-23T14:01:32.511959+00:00",
+        "tecnoredesdelmeta.com": "2026-08-23T14:01:32.511959+00:00",
+        "onfaro.com.co": "2026-08-23T14:01:32.511959+00:00",
+        "iceinspeccion.com": "2026-08-23T14:01:32.511959+00:00"
       },
       "query_offset": 0
     }
