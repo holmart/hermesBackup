@@ -73,7 +73,6 @@ GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
 LOG_MAX_LINES = 5000
 KNOWN_DOMAINS_TTL_DAYS = 30
 MAX_LEADS_PER_RUN = 25
-MIN_LEADS_FOR_SINGLE_CITY = 10  # If first city yields fewer, search next city too
 
 BLOCKED_DOMAINS_GLOBAL = {
     "bing.com", "microsoft.com", "google.com", "youtube.com", "facebook.com",
@@ -96,9 +95,6 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
 ]
-
-# Session-stable User-Agent (picked once at startup, reused for all requests)
-SESSION_USER_AGENT = random.choice(USER_AGENTS)
 
 BOT_CHALLENGE_PHRASES = [
     "please complete the following challenge", "unusual traffic",
@@ -358,11 +354,12 @@ def get_root_domain(url: str) -> str:
 
 
 def fetch_url(url: str, max_attempts: int = 3, timeout: int = 15) -> Optional[str]:
-    """Fetch URL with retries and bot detection. Uses session-stable User-Agent."""
+    """Fetch URL with retries and bot detection."""
     for attempt in range(1, max_attempts + 1):
+        ua = random.choice(USER_AGENTS)
         cmd = [
             "curl", "-s", "-L", "--max-time", str(timeout), "--compressed",
-            "-A", SESSION_USER_AGENT,
+            "-A", ua,
             "-H", "accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "-H", "accept-language: es-CO,es;q=0.9,en;q=0.5",
             "-H", "cache-control: no-cache",
@@ -425,75 +422,65 @@ def is_relevant_domain(url: str, vertical: Dict) -> bool:
 def search_google_places(city: str, vertical: Dict, known_domains: Set[str]) -> List[str]:
     """Search Google Places Text Search API for businesses. Returns list of website URLs.
 
-    Performs multiple searches using sub-niche keywords from the vertical config
-    (field: search.places_queries). Falls back to a single generic search if not configured.
+    Uses the Places API (New) Text Search endpoint. Falls back gracefully on any error.
     Requires GOOGLE_PLACES_API_KEY environment variable.
     """
     if not GOOGLE_PLACES_API_KEY:
         return []
 
     search_cfg = vertical.get("search", {})
-    # Multiple sub-niche queries for broader coverage
-    places_queries = search_cfg.get("places_queries", [])
-    if not places_queries:
-        # Fallback: single generic search using vertical name
-        places_queries = [vertical.get("name", "")]
+    # Build search text from vertical context
+    search_text = f"{vertical.get('name', '')} en {city} Colombia"
 
-    all_urls = []
-    seen_domains_local = set()
+    log(f"  Google Places: searching '{search_text}'")
 
-    for query_template in places_queries:
-        search_text = f"{query_template} en {city} Colombia"
-        log(f"  Google Places: '{search_text}'")
+    # Use Places API Text Search (New)
+    url = "https://places.googleapis.com/v1/places:searchText"
+    payload = json.dumps({
+        "textQuery": search_text,
+        "languageCode": "es",
+        "regionCode": "CO",
+        "maxResultCount": 20,
+    }).encode()
 
-        url = "https://places.googleapis.com/v1/places:searchText"
-        payload = json.dumps({
-            "textQuery": search_text,
-            "languageCode": "es",
-            "regionCode": "CO",
-            "maxResultCount": 20,
-        }).encode()
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+            "X-Goog-FieldMask": "places.displayName,places.websiteUri,places.nationalPhoneNumber,places.formattedAddress,places.rating,places.userRatingCount",
+        },
+        method="POST",
+    )
 
-        req = urllib.request.Request(
-            url,
-            data=payload,
-            headers={
-                "Content-Type": "application/json",
-                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-                "X-Goog-FieldMask": "places.displayName,places.websiteUri,places.nationalPhoneNumber,places.formattedAddress,places.rating,places.userRatingCount",
-            },
-            method="POST",
-        )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+    except (urllib.error.URLError, urllib.error.HTTPError, Exception) as e:
+        log(f"  Google Places API error: {e}")
+        return []
 
-        try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read())
-        except (urllib.error.URLError, urllib.error.HTTPError, Exception) as e:
-            log(f"  Google Places API error: {e}")
+    # Extract website URLs from results
+    urls = []
+    places = data.get("places", [])
+    for place in places:
+        website = place.get("websiteUri", "")
+        if not website:
             continue
+        domain = get_root_domain(website)
+        if domain in known_domains:
+            continue
+        if domain in BLOCKED_DOMAINS_GLOBAL:
+            continue
+        urls.append(website)
+        name = place.get("displayName", {}).get("text", "")
+        rating = place.get("rating", 0)
+        reviews = place.get("userRatingCount", 0)
+        log(f"    📍 {name} ({rating}⭐ {reviews} reviews) → {domain}")
 
-        places = data.get("places", [])
-        for place in places:
-            website = place.get("websiteUri", "")
-            if not website:
-                continue
-            domain = get_root_domain(website)
-            if domain in known_domains or domain in seen_domains_local:
-                continue
-            if domain in BLOCKED_DOMAINS_GLOBAL:
-                continue
-            seen_domains_local.add(domain)
-            all_urls.append(website)
-            name = place.get("displayName", {}).get("text", "")
-            rating = place.get("rating", 0)
-            reviews = place.get("userRatingCount", 0)
-            log(f"    📍 {name} ({rating}⭐ {reviews} reviews) → {domain}")
-
-        log(f"  Google Places: {len(places)} results from '{query_template}'")
-        time.sleep(random.uniform(0.5, 1.0))  # Small delay between queries
-
-    log(f"  Google Places total: {len(all_urls)} unique websites from {len(places_queries)} queries")
-    return all_urls
+    log(f"  Google Places: {len(places)} results, {len(urls)} with websites")
+    return urls
 
 
 def search_bing(city: str, vertical: Dict, known_domains: Set[str]) -> List[str]:
@@ -872,30 +859,19 @@ def extract_certifications(html: str) -> List[str]:
 
 
 def scrape_company(url: str, vertical: Dict) -> Optional[Dict]:
-    """Visit company website + subpages, extract data including structured data.
-    Retries the main page once with longer timeout if first attempt fails."""
+    """Visit company website + subpages, extract data including structured data."""
     html = fetch_url(url, max_attempts=2, timeout=12)
     if not html or len(html) < 200:
-        # Intelligent retry: try once more with longer timeout
-        log(f"    ↻ Retrying {get_root_domain(url)} with extended timeout...")
-        time.sleep(random.uniform(2, 4))
-        html = fetch_url(url, max_attempts=1, timeout=20)
-        if not html or len(html) < 200:
-            return None
+        return None
 
     base_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
     domain = get_root_domain(url)
     all_html = html
 
     for subpage in ["/contacto", "/contactanos", "/contact", "/nosotros", "/quienes-somos"]:
-        sub_html = fetch_url(urljoin(base_url, subpage), max_attempts=1, timeout=10)
+        sub_html = fetch_url(urljoin(base_url, subpage), max_attempts=1, timeout=8)
         if sub_html and len(sub_html) > 200:
             all_html += "\n" + sub_html
-        elif sub_html is None:
-            # Retry subpage once with slightly longer timeout
-            sub_html = fetch_url(urljoin(base_url, subpage), max_attempts=1, timeout=15)
-            if sub_html and len(sub_html) > 200:
-                all_html += "\n" + sub_html
         time.sleep(random.uniform(0.5, 1.5))
 
     raw_title = ""
@@ -1276,6 +1252,7 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
 
     city_index = vstate.get("city_index", 0) % len(cities)
     city = cities[city_index]
+    next_city = cities[(city_index + 1) % len(cities)]
 
     log(f"Target city: {city} (index {city_index})")
 
@@ -1283,31 +1260,9 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
     log("\n--- PRE-FILTER: LOADING CRM DOMAINS ---")
     existing_domains = load_existing_domains(table)
 
-    # PHASE 1: SEARCH (multi-city: if first city yields few results, search next)
+    # PHASE 1: SEARCH
     log("\n--- PHASE 1: SEARCH ---")
     candidate_urls = search_city(city, vertical, vstate, crm_domains=existing_domains)
-    cities_searched = [city]
-    cities_advanced = 1
-
-    # If first city didn't yield enough candidates, search additional cities
-    while len(candidate_urls) < MIN_LEADS_FOR_SINGLE_CITY and cities_advanced < 3:
-        next_idx = (city_index + cities_advanced) % len(cities)
-        extra_city = cities[next_idx]
-        log(f"\n  City '{cities_searched[-1]}' yielded only {len(candidate_urls)} candidates, adding '{extra_city}'...")
-        extra_urls = search_city(extra_city, vertical, vstate, crm_domains=existing_domains)
-        # Deduplicate by domain
-        existing_candidate_domains = {get_root_domain(u) for u in candidate_urls}
-        for u in extra_urls:
-            if get_root_domain(u) not in existing_candidate_domains:
-                candidate_urls.append(u)
-                existing_candidate_domains.add(get_root_domain(u))
-        cities_searched.append(extra_city)
-        cities_advanced += 1
-
-    # Advance city_index by number of cities searched
-    next_city = cities[(city_index + cities_advanced) % len(cities)]
-    if len(cities_searched) > 1:
-        log(f"  Searched {len(cities_searched)} cities: {', '.join(cities_searched)} → {len(candidate_urls)} total candidates")
 
     # PHASE 2: SCRAPE (parallelized)
     log("\n--- PHASE 2: SCRAPE & EXTRACT (parallel) ---")
@@ -1427,10 +1382,10 @@ def run_vertical(vertical: Dict, state: Dict) -> Dict:
         "duplicates": duplicates, "next_city": next_city,
         "llm_validated": llm_validated,
     }
-    send_telegram_report(qualified_leads, " + ".join(cities_searched), stats, vertical)
+    send_telegram_report(qualified_leads, city, stats, vertical)
 
     # Update vertical state
-    vstate["city_index"] = (city_index + cities_advanced) % len(cities)
+    vstate["city_index"] = (city_index + 1) % len(cities)
     now_iso = datetime.now(timezone.utc).isoformat()
     known = vstate.get("known_domains", {})
     if isinstance(known, list):

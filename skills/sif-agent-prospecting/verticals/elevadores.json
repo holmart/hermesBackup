@@ -1,0 +1,87 @@
+{
+  "id": "elevadores",
+  "name": "Elevadores y Escaleras Mecanicas",
+  "description": "Empresas de mantenimiento de ascensores y escaleras mecanicas en Colombia",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": true,
+  "cities": [
+    "Bogota",
+    "Medellin",
+    "Cali",
+    "Barranquilla",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales",
+    "Ibague",
+    "Villavicencio",
+    "Santa Marta",
+    "Cucuta",
+    "Neiva",
+    "Armenia",
+    "Popayan"
+  ],
+  "search": {
+    "places_queries": [
+      "empresa mantenimiento ascensores",
+      "servicio tecnico elevadores",
+      "escaleras mecanicas montacargas"
+    ],
+    "fallback_queries": [
+      "empresa mantenimiento ascensores {city} Colombia",
+      "mantenimiento elevadores edificios {city}",
+      "reparacion ascensores {city} Colombia",
+      "empresa escaleras mecanicas {city}",
+      "modernizacion ascensores {city} Colombia",
+      "servicio tecnico elevadores {city}",
+      "mantenimiento preventivo ascensores {city}",
+      "empresa montacargas {city} Colombia"
+    ],
+    "llm_context": "Buscar empresas de mantenimiento de ascensores elevadores escaleras mecanicas y montacargas en Colombia. Nichos: edificios residenciales, centros comerciales, hospitales, hoteles, oficinas corporativas.",
+    "num_queries": 6
+  },
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+  "extraction": {
+    "service_keywords": [
+      "ascensores",
+      "elevadores",
+      "escaleras mecanicas",
+      "montacargas",
+      "mantenimiento preventivo",
+      "mantenimiento correctivo",
+      "modernizacion",
+      "repuestos ascensores",
+      "puertas de ascensor",
+      "tableros de control",
+      "cabinas",
+      "plataformas elevadoras",
+      "salvaescaleras"
+    ],
+    "blocked_domains_extra": [
+      "otis.com",
+      "schindler.com",
+      "kone.com",
+      "thyssenkrupp.com",
+      "mitsubishielectric.com",
+      "hitachi.com"
+    ]
+  },
+  "validation": {
+    "llm_context": "Empresa que PRESTA servicios de mantenimiento de ascensores/elevadores en Colombia. NO fabricante multinacional (Otis, Schindler, KONE).",
+    "disqualify_keywords": [
+      "constructora",
+      "venta de apartamentos",
+      "inmobiliaria"
+    ]
+  },
+  "telegram_report": {
+    "emoji": "\ud83d\uded7",
+    "title": "Leads Elevadores"
+  }
+}

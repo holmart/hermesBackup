@@ -1,0 +1,93 @@
+{
+  "id": "extintores",
+  "name": "Extintores y Protección Contra Incendios",
+  "description": "Empresas de recarga de extintores, sistemas contra incendios, rociadores, detección de humo y señalización de emergencia en Colombia",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": true,
+  "cities": [
+    "Bogota",
+    "Medellin",
+    "Cali",
+    "Barranquilla",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales",
+    "Ibague",
+    "Villavicencio",
+    "Santa Marta",
+    "Cucuta",
+    "Neiva",
+    "Armenia",
+    "Popayan"
+  ],
+  "search": {
+    "fallback_queries": [
+      "empresa recarga extintores {city} Colombia",
+      "sistemas contra incendios {city}",
+      "mantenimiento extintores empresas {city} Colombia",
+      "instalacion rociadores contra incendio {city}",
+      "empresa deteccion de incendios {city}",
+      "senalizacion evacuacion empresas {city} Colombia",
+      "empresa proteccion contra incendios {city}",
+      "mantenimiento red contra incendios {city}"
+    ],
+    "llm_context": "Buscar empresas de protección contra incendios: recarga y mantenimiento de extintores, instalación de rociadores (sprinklers), sistemas de detección de humo, gabinetes contra incendio, señalización de emergencia, planes de evacuación. Nichos: edificios, bodegas, industrias, centros comerciales, hospitales, colegios, conjuntos.",
+    "num_queries": 6,
+    "places_queries": [
+      "empresa recarga extintores",
+      "sistemas contra incendios rociadores",
+      "proteccion contra incendios senalizacion"
+    ]
+  },
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+  "extraction": {
+    "service_keywords": [
+      "extintores",
+      "recarga de extintores",
+      "contra incendios",
+      "protección contra incendios",
+      "proteccion contra incendios",
+      "rociadores",
+      "sprinklers",
+      "detección de humo",
+      "deteccion de humo",
+      "gabinetes contra incendio",
+      "red contra incendios",
+      "señalización",
+      "senalizacion",
+      "evacuación",
+      "evacuacion",
+      "sistemas de alarma",
+      "bombas contra incendio",
+      "agente limpio",
+      "CO2",
+      "polvo químico"
+    ],
+    "blocked_domains_extra": [
+      "kidde.com",
+      "tyco.com",
+      "honeywell.com",
+      "bomberos.gov.co"
+    ]
+  },
+  "validation": {
+    "llm_context": "Empresa colombiana que PRESTA servicios de protección contra incendios: recarga de extintores, instalación/mantenimiento de sistemas contra incendio, detección, señalización. NO debe ser: cuerpo de bomberos, una tienda online de extintores sin servicio, ni una aseguradora.",
+    "disqualify_keywords": [
+      "aseguradora",
+      "seguros",
+      "bomberos voluntarios",
+      "solo venta online"
+    ]
+  },
+  "telegram_report": {
+    "emoji": "🧯",
+    "title": "Leads Extintores / Contra Incendios"
+  }
+}

@@ -4,13 +4,23 @@
   "description": "Empresas de instalación, mantenimiento y reparación de aires acondicionados, refrigeración comercial e industrial en Colombia",
   "dynamodb_table": "sifagent-crm-clients",
   "active": true,
-
   "cities": [
-    "Bogota", "Medellin", "Cali", "Barranquilla", "Bucaramanga",
-    "Cartagena", "Pereira", "Manizales", "Ibague", "Villavicencio",
-    "Santa Marta", "Cucuta", "Neiva", "Armenia", "Popayan"
+    "Bogota",
+    "Medellin",
+    "Cali",
+    "Barranquilla",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales",
+    "Ibague",
+    "Villavicencio",
+    "Santa Marta",
+    "Cucuta",
+    "Neiva",
+    "Armenia",
+    "Popayan"
   ],
-
   "search": {
     "fallback_queries": [
       "empresa aire acondicionado {city} Colombia",
@@ -23,9 +33,13 @@
       "empresa cuartos frios {city} Colombia"
     ],
     "llm_context": "Buscar empresas de mantenimiento, instalación y reparación de aires acondicionados y sistemas de refrigeración en Colombia. Nichos: oficinas corporativas, centros comerciales, hoteles, hospitales, restaurantes, supermercados, cuartos fríos, refrigeración industrial, data centers, bodegas refrigeradas.",
-    "num_queries": 4
+    "num_queries": 6,
+    "places_queries": [
+      "empresa aire acondicionado mantenimiento",
+      "refrigeracion comercial instalacion",
+      "servicio tecnico HVAC climatizacion"
+    ]
   },
-
   "scoring": {
     "min_score": 3,
     "bonus_services_threshold": 3,
@@ -33,29 +47,52 @@
     "bonus_size_medium": 0.5,
     "bonus_size_small": 0.25
   },
-
   "extraction": {
     "service_keywords": [
-      "aire acondicionado", "climatización", "climatizacion",
-      "refrigeración", "refrigeracion", "HVAC",
-      "mantenimiento preventivo", "mantenimiento correctivo",
-      "instalación", "instalacion", "cuartos fríos", "cuartos frios",
-      "ventilación", "ventilacion", "ductos", "chiller",
-      "split", "mini split", "cassette", "fan coil",
-      "refrigeración comercial", "refrigeración industrial"
+      "aire acondicionado",
+      "climatización",
+      "climatizacion",
+      "refrigeración",
+      "refrigeracion",
+      "HVAC",
+      "mantenimiento preventivo",
+      "mantenimiento correctivo",
+      "instalación",
+      "instalacion",
+      "cuartos fríos",
+      "cuartos frios",
+      "ventilación",
+      "ventilacion",
+      "ductos",
+      "chiller",
+      "split",
+      "mini split",
+      "cassette",
+      "fan coil",
+      "refrigeración comercial",
+      "refrigeración industrial"
     ],
     "blocked_domains_extra": [
-      "mercadolibre.com.co", "homecenter.com.co", "falabella.com.co",
-      "alkosto.com", "exito.com", "samsung.com", "lg.com",
-      "daikin.com", "carrier.com", "york.com"
+      "mercadolibre.com.co",
+      "homecenter.com.co",
+      "falabella.com.co",
+      "alkosto.com",
+      "exito.com",
+      "samsung.com",
+      "lg.com",
+      "daikin.com",
+      "carrier.com",
+      "york.com"
     ]
   },
-
   "validation": {
     "llm_context": "Empresa de servicios de aire acondicionado, HVAC o refrigeración en Colombia. Debe ser una empresa que PRESTA servicios (instala, repara, mantiene), NO una tienda que vende equipos ni un fabricante. Validar que no sea solo venta retail de electrodomésticos.",
-    "disqualify_keywords": ["venta de electrodomésticos", "tienda online", "ecommerce"]
+    "disqualify_keywords": [
+      "venta de electrodomésticos",
+      "tienda online",
+      "ecommerce"
+    ]
   },
-
   "telegram_report": {
     "emoji": "❄️",
     "title": "Leads HVAC / Aire Acondicionado"

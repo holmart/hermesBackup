@@ -1,0 +1,93 @@
+{
+  "id": "limpieza",
+  "name": "Limpieza Industrial y Empresarial",
+  "description": "Empresas de aseo industrial, limpieza de fachadas, lavado de tanques, facility management y servicios de limpieza comercial en Colombia",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": true,
+  "cities": [
+    "Bogota",
+    "Medellin",
+    "Cali",
+    "Barranquilla",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales",
+    "Ibague",
+    "Villavicencio",
+    "Santa Marta",
+    "Cucuta",
+    "Neiva",
+    "Armenia",
+    "Popayan"
+  ],
+  "search": {
+    "fallback_queries": [
+      "empresa limpieza industrial {city} Colombia",
+      "aseo empresarial outsourcing {city}",
+      "limpieza de fachadas edificios {city} Colombia",
+      "lavado de tanques agua {city}",
+      "empresa facility management {city}",
+      "limpieza comercial oficinas {city} Colombia",
+      "servicio aseo industrial plantas {city}",
+      "empresa limpieza post-construccion {city}"
+    ],
+    "llm_context": "Buscar empresas de limpieza industrial, aseo empresarial, facility management, lavado de tanques, limpieza de fachadas, y servicios de limpieza comercial en Colombia. Nichos: plantas industriales, edificios corporativos, centros comerciales, hospitales, conjuntos residenciales, post-construcción, zonas comunes.",
+    "num_queries": 6,
+    "places_queries": [
+      "empresa limpieza industrial",
+      "aseo empresarial facility management",
+      "limpieza de fachadas lavado tanques"
+    ]
+  },
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+  "extraction": {
+    "service_keywords": [
+      "limpieza industrial",
+      "aseo empresarial",
+      "aseo industrial",
+      "facility management",
+      "limpieza de fachadas",
+      "lavado de tanques",
+      "limpieza comercial",
+      "outsourcing de aseo",
+      "limpieza post-construcción",
+      "limpieza post-construccion",
+      "brillado de pisos",
+      "cristalizado",
+      "limpieza de alfombras",
+      "desinfección",
+      "desinfeccion",
+      "limpieza hospitalaria",
+      "mantenimiento de zonas comunes",
+      "jardinería",
+      "jardineria"
+    ],
+    "blocked_domains_extra": [
+      "servientrega.com",
+      "sodexo.com",
+      "aramark.com",
+      "iss-facility.com",
+      "jll.com"
+    ]
+  },
+  "validation": {
+    "llm_context": "Empresa colombiana que PRESTA servicios de limpieza industrial, aseo empresarial, facility management o lavado especializado. NO debe ser: una empresa de productos de aseo (jabones, desinfectantes), ni una tienda de suministros, ni solo servicio doméstico para hogares.",
+    "disqualify_keywords": [
+      "productos de aseo",
+      "tienda de insumos",
+      "servicio doméstico",
+      "empleada doméstica"
+    ]
+  },
+  "telegram_report": {
+    "emoji": "🧹",
+    "title": "Leads Limpieza Industrial"
+  }
+}

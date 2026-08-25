@@ -1,0 +1,96 @@
+{
+  "id": "telecomunicaciones",
+  "name": "Telecomunicaciones y Redes (ISP, FTTH, HFC)",
+  "description": "Empresas de instalación y mantenimiento de redes de telecomunicaciones, fibra óptica, ISPs regionales, CCTV corporativo y cableado estructurado en Colombia",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": true,
+  "cities": [
+    "Bogota",
+    "Medellin",
+    "Cali",
+    "Barranquilla",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales",
+    "Ibague",
+    "Villavicencio",
+    "Santa Marta",
+    "Cucuta",
+    "Neiva",
+    "Armenia",
+    "Popayan"
+  ],
+  "search": {
+    "fallback_queries": [
+      "empresa instalacion fibra optica {city} Colombia",
+      "ISP regional internet {city}",
+      "cableado estructurado empresas {city} Colombia",
+      "empresa telecomunicaciones {city}",
+      "instalacion FTTH fibra hogar {city}",
+      "empresa redes de datos {city} Colombia",
+      "proveedor internet empresarial {city}",
+      "mantenimiento redes telecomunicaciones {city}"
+    ],
+    "llm_context": "Buscar empresas de servicios de telecomunicaciones: ISPs regionales, instalación de fibra óptica (FTTH/FTTP), mantenimiento de redes HFC, cableado estructurado, redes de datos empresariales, WiFi corporativo. Nichos: conjuntos residenciales, edificios, zonas rurales, empresas, centros de datos, colegios.",
+    "num_queries": 6,
+    "places_queries": [
+      "empresa instalacion fibra optica",
+      "proveedor internet ISP regional",
+      "cableado estructurado redes empresariales"
+    ]
+  },
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+  "extraction": {
+    "service_keywords": [
+      "fibra óptica",
+      "fibra optica",
+      "FTTH",
+      "FTTP",
+      "cableado estructurado",
+      "telecomunicaciones",
+      "internet empresarial",
+      "ISP",
+      "proveedor de internet",
+      "redes de datos",
+      "HFC",
+      "WiFi corporativo",
+      "enlaces dedicados",
+      "data center",
+      "rack",
+      "certificación de red",
+      "certificacion de red",
+      "fusión de fibra",
+      "fusion de fibra",
+      "GPON"
+    ],
+    "blocked_domains_extra": [
+      "claro.com.co",
+      "movistar.com.co",
+      "tigo.com.co",
+      "etb.com.co",
+      "une.com.co",
+      "wom.co",
+      "aztecacomunicaciones.com"
+    ]
+  },
+  "validation": {
+    "llm_context": "Empresa colombiana de telecomunicaciones que PRESTA servicios de instalación, mantenimiento o provisión de internet/redes. Puede ser ISP regional, contratista de fibra, o empresa de cableado estructurado. NO debe ser: un operador grande (Claro, Movistar, Tigo, ETB, WOM), ni una tienda de celulares, ni solo venta de equipos de red.",
+    "disqualify_keywords": [
+      "venta de celulares",
+      "tienda de tecnología",
+      "planes postpago",
+      "recargas"
+    ]
+  },
+  "telegram_report": {
+    "emoji": "📡",
+    "title": "Leads Telecomunicaciones"
+  }
+}

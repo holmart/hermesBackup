@@ -1,0 +1,95 @@
+{
+  "id": "soporte-tecnico",
+  "name": "Soporte Técnico General",
+  "description": "Empresas de soporte técnico en campo: equipos de cómputo, impresoras, redes, CCTV, control de acceso y mantenimiento tecnológico",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": true,
+  "cities": [
+    "Bogota",
+    "Medellin",
+    "Cali",
+    "Barranquilla",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales",
+    "Ibague",
+    "Villavicencio",
+    "Santa Marta",
+    "Cucuta",
+    "Neiva",
+    "Armenia",
+    "Popayan"
+  ],
+  "search": {
+    "fallback_queries": [
+      "empresa soporte tecnico empresas {city} Colombia",
+      "mantenimiento equipos computo empresas {city}",
+      "soporte informatico empresarial {city} Colombia",
+      "instalacion camaras seguridad CCTV {city}",
+      "empresa control de acceso {city}",
+      "mantenimiento impresoras corporativo {city} Colombia",
+      "soporte redes empresariales {city}",
+      "empresa mesa de ayuda TI {city}"
+    ],
+    "llm_context": "Buscar empresas que prestan soporte técnico en campo: mantenimiento de equipos de cómputo, impresoras, redes LAN/WiFi, CCTV/cámaras de seguridad, control de acceso, puntos de venta (POS), y soporte TI general para empresas. Nichos: oficinas, retail, restaurantes, hoteles, colegios, clínicas.",
+    "num_queries": 6,
+    "places_queries": [
+      "empresa soporte tecnico informatico",
+      "instalacion camaras seguridad CCTV",
+      "mantenimiento equipos computo redes"
+    ]
+  },
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+  "extraction": {
+    "service_keywords": [
+      "soporte técnico",
+      "soporte tecnico",
+      "mesa de ayuda",
+      "mantenimiento de equipos",
+      "mantenimiento computadores",
+      "soporte informático",
+      "soporte informatico",
+      "CCTV",
+      "cámaras de seguridad",
+      "camaras de seguridad",
+      "control de acceso",
+      "redes LAN",
+      "cableado estructurado",
+      "impresoras",
+      "puntos de venta",
+      "POS",
+      "outsourcing TI",
+      "soporte en sitio",
+      "help desk"
+    ],
+    "blocked_domains_extra": [
+      "hp.com",
+      "dell.com",
+      "lenovo.com",
+      "epson.com",
+      "brother.com",
+      "canon.com",
+      "compumax.com.co"
+    ]
+  },
+  "validation": {
+    "llm_context": "Empresa colombiana que PRESTA servicios de soporte técnico en campo (visitas, instalaciones, mantenimiento de equipos tecnológicos). NO debe ser: una tienda de cómputo, un ecommerce de tecnología, un fabricante, ni un freelance individual.",
+    "disqualify_keywords": [
+      "tienda de computadores",
+      "venta de equipos",
+      "ecommerce",
+      "gaming"
+    ]
+  },
+  "telegram_report": {
+    "emoji": "🖥️",
+    "title": "Leads Soporte Técnico"
+  }
+}

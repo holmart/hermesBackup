@@ -162,7 +162,7 @@
   "query_offset": 3,
   "verticals": {
     "fumigacion": {
-      "city_index": 13,
+      "city_index": 14,
       "known_domains": {
         "duckduckgo.com": "2026-08-16T15:52:37.891582+00:00",
         "fumycontrol.co": "2026-08-16T15:52:37.891582+00:00",
@@ -276,12 +276,22 @@
         "fumiespray.com": "2026-08-23T13:02:16.944976+00:00",
         "fumigacionesneiva.com": "2026-08-23T13:02:16.944976+00:00",
         "coplagroup.com": "2026-08-23T13:02:16.944976+00:00",
-        "uruservice.com": "2026-08-23T13:02:16.944976+00:00"
+        "uruservice.com": "2026-08-23T13:02:16.944976+00:00",
+        "colplag.com": "2026-08-24T13:02:03.505698+00:00",
+        "fumigacionesbw.com.co": "2026-08-24T13:02:03.505698+00:00",
+        "fumilimpieza.com": "2026-08-24T13:02:03.505698+00:00",
+        "trulynolen.com.co": "2026-08-24T13:02:03.505698+00:00",
+        "tecnisecdecolombia.co": "2026-08-24T13:02:03.505698+00:00",
+        "selbasoluciones.com": "2026-08-24T13:02:03.505698+00:00",
+        "fumigacionesdelquindio.com": "2026-08-24T13:02:03.505698+00:00",
+        "gruposanix.com": "2026-08-24T13:02:03.505698+00:00",
+        "cleanfreshsas.com": "2026-08-24T13:02:03.505698+00:00",
+        "telesai.com": "2026-08-24T13:02:03.505698+00:00"
       },
       "query_offset": 0
     },
     "hvac": {
-      "city_index": 10,
+      "city_index": 11,
       "known_domains": {
         "duckduckgo.com": "2026-08-18T13:33:18.499153+00:00",
         "aireacondicionadosas.com": "2026-08-18T13:33:18.499153+00:00",
@@ -367,12 +377,22 @@
         "climatizacionsas.com": "2026-08-23T13:31:57.851662+00:00",
         "planetacolombia.com": "2026-08-23T13:31:57.851662+00:00",
         "refrielectricos.com.co": "2026-08-23T13:31:57.851662+00:00",
-        "gpsegurosenrefrigeracion.com": "2026-08-23T13:31:57.851662+00:00"
+        "gpsegurosenrefrigeracion.com": "2026-08-23T13:31:57.851662+00:00",
+        "7tech.com.co": "2026-08-24T13:32:00.161296+00:00",
+        "thermotar.com": "2026-08-24T13:32:00.161296+00:00",
+        "saverluz.com": "2026-08-24T13:32:00.161296+00:00",
+        "electrosoluciones360.com": "2026-08-24T13:32:00.161296+00:00",
+        "tecnifrio.com.co": "2026-08-24T13:32:00.161296+00:00",
+        "plastico.com": "2026-08-24T13:32:00.161296+00:00",
+        "refrigerar.com.co": "2026-08-24T13:32:00.161296+00:00",
+        "sociovisto.com": "2026-08-24T13:32:00.161296+00:00",
+        "en-obra.com": "2026-08-24T13:32:00.161296+00:00",
+        "tecnogastromag.com": "2026-08-24T13:32:00.161296+00:00"
       },
       "query_offset": 0
     },
     "electrico": {
-      "city_index": 10,
+      "city_index": 11,
       "known_domains": {
         "santanaingenieria.com": "2026-08-18T14:04:04.308320+00:00",
         "cieenergy.com": "2026-08-18T14:04:04.308320+00:00",
@@ -458,7 +478,79 @@
         "cotiwa.com": "2026-08-23T14:01:32.511959+00:00",
         "tecnoredesdelmeta.com": "2026-08-23T14:01:32.511959+00:00",
         "onfaro.com.co": "2026-08-23T14:01:32.511959+00:00",
-        "iceinspeccion.com": "2026-08-23T14:01:32.511959+00:00"
+        "iceinspeccion.com": "2026-08-23T14:01:32.511959+00:00",
+        "lmelectricos.com": "2026-08-24T14:02:12.598564+00:00",
+        "ingeletec.com": "2026-08-24T14:02:12.598564+00:00",
+        "aiyellow.com": "2026-08-24T14:02:12.598564+00:00",
+        "aserding.com.co": "2026-08-24T14:02:12.598564+00:00",
+        "ingetecnologica.com": "2026-08-24T14:02:12.598564+00:00",
+        "ind-ir.co": "2026-08-24T14:02:12.598564+00:00",
+        "totalmaxingenieria.com": "2026-08-24T14:02:12.598564+00:00",
+        "maintprog.com.co": "2026-08-24T14:02:12.598564+00:00",
+        "sieec.com.co": "2026-08-24T14:02:12.598564+00:00",
+        "retiecertificaciones.com": "2026-08-24T14:02:12.598564+00:00"
+      },
+      "query_offset": 0
+    },
+    "elevadores": {
+      "city_index": 1,
+      "known_domains": {
+        "serbalelevadores.com": "2026-08-25T08:40:45.494100+00:00",
+        "tkelevator.com": "2026-08-25T08:40:45.494100+00:00",
+        "internacionaldeelevadores.com": "2026-08-25T08:40:45.494100+00:00",
+        "tecnoelevadoressas.com.co": "2026-08-25T08:40:45.494100+00:00",
+        "ascensoresfemm.com": "2026-08-25T08:40:45.494100+00:00",
+        "wsascensores.com": "2026-08-25T08:40:45.494100+00:00",
+        "ascensores-scala.com": "2026-08-25T08:40:45.494100+00:00",
+        "smartmotion.com.co": "2026-08-25T08:40:45.494100+00:00",
+        "lift-top.com": "2026-08-25T08:40:45.494100+00:00",
+        "ascensoresmac.com": "2026-08-25T08:40:45.494100+00:00",
+        "elevadoresingenieria.com.co": "2026-08-25T08:40:45.494100+00:00",
+        "estiloingenieria.com": "2026-08-25T08:40:45.494100+00:00",
+        "ascensoresvitah.com": "2026-08-25T08:40:45.494100+00:00",
+        "ascensoresgold.com": "2026-08-25T08:40:45.494100+00:00",
+        "3melevadores.com.co": "2026-08-25T08:40:45.494100+00:00",
+        "sayingenieria.com": "2026-08-25T08:40:45.494100+00:00",
+        "ascensorespaez.com": "2026-08-25T08:40:45.494100+00:00",
+        "righa.co": "2026-08-25T08:40:45.494100+00:00",
+        "escalerasdecolombia.com": "2026-08-25T08:40:45.494100+00:00",
+        "procesosverticales.com": "2026-08-25T08:40:45.494100+00:00",
+        "electrosuarez.com": "2026-08-25T08:40:45.494100+00:00",
+        "phoenixelevators.com.co": "2026-08-25T08:40:45.494100+00:00",
+        "ascensoresvelar.com": "2026-08-25T08:40:45.494100+00:00",
+        "es.scribd.com": "2026-08-25T08:40:45.494100+00:00",
+        "es.otstec-elevator.com": "2026-08-25T08:40:45.494100+00:00"
+      },
+      "query_offset": 0
+    },
+    "gas": {
+      "city_index": 1,
+      "known_domains": {
+        "aaaingenieriadegas.com": "2026-08-25T09:02:04.551888+00:00",
+        "asistec.com.co": "2026-08-25T09:02:04.551888+00:00",
+        "rpgreparavirtualgas.wixsite.com": "2026-08-25T09:02:04.551888+00:00",
+        "cigasgnv.com": "2026-08-25T09:02:04.551888+00:00",
+        "tecnigas.com.co": "2026-08-25T09:02:04.551888+00:00",
+        "tecnicos-en-gasodomesticos-expertos-en-gas-natural-3193512613.ueniweb.com": "2026-08-25T09:02:04.551888+00:00",
+        "g.page": "2026-08-25T09:02:04.551888+00:00",
+        "grupovanti.com": "2026-08-25T09:02:04.551888+00:00",
+        "toquedehogar.com": "2026-08-25T09:02:04.551888+00:00",
+        "gasvanti.com": "2026-08-25T09:02:04.551888+00:00",
+        "colfgas.com.co": "2026-08-25T09:02:04.551888+00:00",
+        "reparamoscalentado.wixsite.com": "2026-08-25T09:02:04.551888+00:00",
+        "calentadoresycalderasbogota.com": "2026-08-25T09:02:04.551888+00:00",
+        "tecni-calentadores.com": "2026-08-25T09:02:04.551888+00:00",
+        "electroservigasbogota.com": "2026-08-25T09:02:04.551888+00:00",
+        "reparacionesdecalentadoresbogota.netlify.app": "2026-08-25T09:02:04.551888+00:00",
+        "calentadoresaxxa.com": "2026-08-25T09:02:04.551888+00:00",
+        "eidecol.com": "2026-08-25T09:02:04.551888+00:00",
+        "tecnicalentadoresbj.jimdofree.com": "2026-08-25T09:02:04.551888+00:00",
+        "aguaygasingenieria.com": "2026-08-25T09:02:04.551888+00:00",
+        "hidrotest.com": "2026-08-25T09:02:04.551888+00:00",
+        "wa.me": "2026-08-25T09:02:04.551888+00:00",
+        "redegasdomiciliario.com": "2026-08-25T09:02:04.551888+00:00",
+        "tecnihogargasnaturalsas.com.co": "2026-08-25T09:02:04.551888+00:00",
+        "planetacolombia.com": "2026-08-25T09:02:04.551888+00:00"
       },
       "query_offset": 0
     }

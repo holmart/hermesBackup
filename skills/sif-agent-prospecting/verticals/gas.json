@@ -1,0 +1,94 @@
+{
+  "id": "gas",
+  "name": "Gas - Calentadores, Calderas y Redes",
+  "description": "Empresas de instalación y mantenimiento de redes de gas, calentadores, calderas, gasodomésticos y certificaciones de gas en Colombia",
+  "dynamodb_table": "sifagent-crm-clients",
+  "active": true,
+  "cities": [
+    "Bogota",
+    "Medellin",
+    "Cali",
+    "Barranquilla",
+    "Bucaramanga",
+    "Cartagena",
+    "Pereira",
+    "Manizales",
+    "Ibague",
+    "Villavicencio",
+    "Santa Marta",
+    "Cucuta",
+    "Neiva",
+    "Armenia",
+    "Popayan"
+  ],
+  "search": {
+    "fallback_queries": [
+      "empresa instalacion gas natural {city} Colombia",
+      "mantenimiento calentadores gas {city}",
+      "revision redes gas certificada {city} Colombia",
+      "empresa calderas industriales {city}",
+      "instalacion gasodomesticos {city}",
+      "certificacion gas natural {city} Colombia",
+      "reparacion calentadores {city}",
+      "empresa mantenimiento calderas vapor {city}"
+    ],
+    "llm_context": "Buscar empresas que prestan servicios de gas natural: instalación de redes internas, revisión periódica de gas, mantenimiento de calentadores, calderas industriales, gasodomésticos, y certificaciones. Nichos: conjuntos residenciales, edificios, industrias, restaurantes, hoteles, hospitales, lavanderías.",
+    "num_queries": 6,
+    "places_queries": [
+      "empresa instalacion gas natural",
+      "mantenimiento calentadores calderas",
+      "certificacion redes de gas"
+    ]
+  },
+  "scoring": {
+    "min_score": 3,
+    "bonus_services_threshold": 3,
+    "bonus_services_score": 0.5,
+    "bonus_size_medium": 0.5,
+    "bonus_size_small": 0.25
+  },
+  "extraction": {
+    "service_keywords": [
+      "gas natural",
+      "redes de gas",
+      "instalación de gas",
+      "instalacion de gas",
+      "calentadores",
+      "calderas",
+      "gasodomésticos",
+      "gasodomesticos",
+      "revisión periódica",
+      "revision periodica",
+      "certificación de gas",
+      "certificacion de gas",
+      "reguladores",
+      "medidores de gas",
+      "red interna de gas",
+      "acometida de gas",
+      "mantenimiento calderas",
+      "vapor",
+      "quemadores"
+    ],
+    "blocked_domains_extra": [
+      "vfrng.com.co",
+      "gasnatural.com",
+      "efigas.com.co",
+      "gascaribe.com",
+      "gasoriente.com.co",
+      "surtigas.com.co"
+    ]
+  },
+  "validation": {
+    "llm_context": "Empresa colombiana que PRESTA servicios de instalación, mantenimiento o certificación de redes de gas, calentadores, calderas o gasodomésticos. NO debe ser: una empresa distribuidora de gas natural (Vanti, Efigas, GasCaribe), ni una ferretería, ni solo venta de calentadores.",
+    "disqualify_keywords": [
+      "distribuidora de gas",
+      "estación de servicio",
+      "gas vehicular",
+      "GLP envasado"
+    ]
+  },
+  "telegram_report": {
+    "emoji": "🔥",
+    "title": "Leads Gas y Calderas"
+  }
+}
