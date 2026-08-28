@@ -1,13 +1,15 @@
 ---
 name: crm-internal-field-enrichment
 description: Enrich CRM using internal fields for name, phone, email.
-version: 1.1.0
+version: 1.2.0
 author: Hermes Agent
 category: data-enrichment
 ---
 # CRM Internal Field Enrichment Skill
 
 This skill enriches the `sifagent-crm-clients` DynamoDB table with verified representative legal information **exclusively from internal fields** (`Responsable`, `CargoResponsable`, `TelefonosExtra`, `EmailExtra`) and email local parts. It does **not** require NIT, website, or external sources, making it suitable for routine data quality improvement when external scraping is blocked, unavailable, or not desired.
+
+**See also:** `references/external_website_enrichment.md` for the complementary website-scraping approach when internal fields are insufficient.
 
 ## When to Use
 
@@ -147,11 +149,21 @@ The skill returns a JSON summary with:
 - Updates are conditional and idempotent – safe to run repeatedly.
 - For cases where internal fields are insufficient, consider integrating with RUES, Cámara de Comercio, or other external sources in a separate enrichment pass.
 
+## Complementary: External Website Enrichment
+
+When internal fields are insufficient (e.g., pipeline v5 leads that arrive without `Responsable`, `TelefonosExtra`, or `EmailExtra`), use **external website enrichment** as a second pass. See `references/external_website_enrichment.md` for full details.
+
+Quick summary:
+1. Fetch website → extract text → LLM extraction → validate → update
+2. Coverage: Dirección ~50%, Teléfono ~60%, Email ~50%
+3. **NIT and RepLegal are NOT available via website scraping** — require RUES or paid APIs
+
 ## Troubleshooting
 
 - If no updates occur: Verify that the internal fields (`Responsable`, `CargoResponsable`, `TelefonosExtra`, `EmailExtra`) actually contain usable data for your dataset.
 - If updates seem incorrect: Inspect the `details` array to see what values were derived and from which source.
 - For persistent failures: Check AWS IAM permissions for the role running the skill; ensure `UpdateItem` on `sifagent-crm-clients` is allowed.
+- **Cron pitfall**: Scripts executed by Hermes cron do NOT inherit shell environment variables from `~/.hermes/.env`. Explicitly load the `.env` file in the script before reading API keys or tokens.
 
 ## Source
 
@@ -159,4 +171,6 @@ This skill uses only data already present in the `sifagent-crm-clients` DynamoDB
 
 ## References
 
-- See `scripts/internal_enrich.py` for the reference implementation of this enrichment logic.
+- `scripts/internal_enrich.py` — Reference implementation
+- `references/internal_enrichment_notes.md` — Development notes
+- `references/external_website_enrichment.md` — Complementary website-scraping approach for when internal fields are insufficient
