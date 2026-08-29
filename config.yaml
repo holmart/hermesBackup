@@ -118,10 +118,11 @@ stt:
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  memory_char_limit: 2200
-  user_char_limit: 1375
+  memory_char_limit: 4400
+  user_char_limit: 2200
   flush_min_turns: 6
   nudge_interval: 10
+  provider: holographic
 delegation:
   max_iterations: 50
 skills:
