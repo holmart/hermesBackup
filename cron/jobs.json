@@ -22,15 +22,15 @@
       "schedule_display": "0 4 * * *",
       "repeat": {
         "times": null,
-        "completed": 11
+        "completed": 12
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-07T14:04:59.019605+00:00",
-      "next_run_at": "2026-08-31T04:00:00+00:00",
-      "last_run_at": "2026-08-30T04:00:55.334345+00:00",
+      "next_run_at": "2026-09-01T04:00:00+00:00",
+      "last_run_at": "2026-08-31T04:00:18.452790+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -71,15 +71,15 @@
       "schedule_display": "*/30 * * * *",
       "repeat": {
         "times": null,
-        "completed": 507
+        "completed": 555
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-19T20:50:22.091944+00:00",
-      "next_run_at": "2026-08-30T10:00:00+00:00",
-      "last_run_at": "2026-08-30T09:30:50.179773+00:00",
+      "next_run_at": "2026-08-31T10:00:00+00:00",
+      "last_run_at": "2026-08-31T09:30:11.366248+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -114,15 +114,15 @@
       "schedule_display": "0 9 * * 1",
       "repeat": {
         "times": null,
-        "completed": 1
+        "completed": 2
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-22T09:33:32.528604+00:00",
-      "next_run_at": "2026-08-31T09:00:00+00:00",
-      "last_run_at": "2026-08-24T09:01:04.014077+00:00",
+      "next_run_at": "2026-09-07T09:00:00+00:00",
+      "last_run_at": "2026-08-31T09:00:15.258557+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -186,7 +186,50 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null
+    },
+    {
+      "id": "f9a501c19e7b",
+      "name": "sync_obsidian_vault",
+      "prompt": "",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "sync_obsidian_vault.sh",
+      "no_agent": true,
+      "monitor_script": null,
+      "monitor_url": null,
+      "monitor_state": null,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 * * * *",
+        "display": "0 * * * *"
+      },
+      "schedule_display": "0 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 11
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-08-30T22:18:32.655185+00:00",
+      "next_run_at": "2026-08-31T10:00:00+00:00",
+      "last_run_at": "2026-08-31T09:00:10.996422+00:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": null,
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
     }
   ],
-  "updated_at": "2026-08-30T09:30:50.180488+00:00"
+  "updated_at": "2026-08-31T09:30:11.367037+00:00"
 }
