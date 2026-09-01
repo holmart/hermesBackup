@@ -2,7 +2,7 @@
   "jobs": [
     {
       "id": "769271a8ce1e",
-      "name": "weekly_crm_enrichment",
+      "name": "crm_enrichment_internal",
       "prompt": "",
       "skills": [],
       "skill": null,
@@ -11,7 +11,7 @@
       "provider_snapshot": null,
       "model_snapshot": null,
       "base_url": null,
-      "script": "internal_enrich.py",
+      "script": "crm_enrich.py",
       "no_agent": true,
       "context_from": null,
       "schedule": {
@@ -22,15 +22,15 @@
       "schedule_display": "0 4 * * *",
       "repeat": {
         "times": null,
-        "completed": 12
+        "completed": 13
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-07T14:04:59.019605+00:00",
-      "next_run_at": "2026-09-01T04:00:00+00:00",
-      "last_run_at": "2026-08-31T04:00:18.452790+00:00",
+      "next_run_at": "2026-09-02T04:00:00+00:00",
+      "last_run_at": "2026-09-01T04:00:30.364409+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -71,15 +71,15 @@
       "schedule_display": "*/30 * * * *",
       "repeat": {
         "times": null,
-        "completed": 555
+        "completed": 603
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-19T20:50:22.091944+00:00",
-      "next_run_at": "2026-08-31T10:00:00+00:00",
-      "last_run_at": "2026-08-31T09:30:11.366248+00:00",
+      "next_run_at": "2026-09-01T10:00:00+00:00",
+      "last_run_at": "2026-09-01T09:30:33.017393+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -140,7 +140,7 @@
     },
     {
       "id": "b912630176ef",
-      "name": "crm_external_enrichment",
+      "name": "crm_enrichment_external",
       "prompt": "Ejecuta el script de enriquecimiento externo del CRM. Procesa hasta 20 leads por corrida. Aplica cambios reales a DynamoDB.",
       "skills": [],
       "skill": null,
@@ -149,7 +149,7 @@
       "provider_snapshot": null,
       "model_snapshot": null,
       "base_url": null,
-      "script": "external_enrich.py",
+      "script": "crm_enrich.py",
       "no_agent": true,
       "monitor_script": null,
       "monitor_url": null,
@@ -157,21 +157,21 @@
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "0 10 * * 1,3,5",
-        "display": "0 10 * * 1,3,5"
+        "expr": "0 6 * * 2,5",
+        "display": "0 6 * * 2,5"
       },
-      "schedule_display": "0 10 * * 1,3,5",
+      "schedule_display": "0 6 * * 2,5",
       "repeat": {
         "times": null,
-        "completed": 1
+        "completed": 2
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-27T21:59:41.551882+00:00",
-      "next_run_at": "2026-08-31T10:00:00+00:00",
-      "last_run_at": "2026-08-28T10:04:29.520345+00:00",
+      "next_run_at": "2026-09-02T10:00:00+00:00",
+      "last_run_at": "2026-08-31T10:04:05.569275+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -212,15 +212,15 @@
       "schedule_display": "0 * * * *",
       "repeat": {
         "times": null,
-        "completed": 11
+        "completed": 35
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-30T22:18:32.655185+00:00",
-      "next_run_at": "2026-08-31T10:00:00+00:00",
-      "last_run_at": "2026-08-31T09:00:10.996422+00:00",
+      "next_run_at": "2026-09-01T10:00:00+00:00",
+      "last_run_at": "2026-09-01T09:00:32.432699+00:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -231,5 +231,5 @@
       "fire_claim": null
     }
   ],
-  "updated_at": "2026-08-31T09:30:11.367037+00:00"
+  "updated_at": "2026-09-01T09:30:33.018168+00:00"
 }
