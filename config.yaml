@@ -80,12 +80,12 @@ tool_loop_guardrails:
 compression:
   enabled: true
   progress_notices: false
-  threshold: 0.5
+  threshold: 0.35
   target_ratio: 0.2
   protect_last_n: 20
   min_tail_user_messages: 1
   max_attempts: 3
-  proactive_prune_tokens: 0
+  proactive_prune_tokens: 4096
   proactive_prune_min_result_chars: 8000
   proactive_prune_min_reclaim_tokens: 4096
   protect_first_n: 3
@@ -174,7 +174,7 @@ platform_toolsets:
 session_reset:
   at_hour: 4
   idle_minutes: 1440
-  mode: none
+  mode: both
 platforms:
   telegram:
     enabled: true

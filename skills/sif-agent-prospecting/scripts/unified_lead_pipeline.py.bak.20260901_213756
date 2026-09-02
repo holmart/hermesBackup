@@ -1105,8 +1105,6 @@ def insert_lead(lead: Dict, table: str, vertical_id: str, max_retries: int = 3) 
         "TamanoEmpresa": {"S": lead.get("company_size", "")},
         "Instagram": {"S": lead.get("instagram", "")},
         "FechaIngreso": {"S": now},
-        "FechaActualizacion": {"S": now},
-        "EntityType": {"S": "CLIENT"},
         "FuenteLead": {"S": f"pipeline_v5_{vertical_id}"},
         "Estado": {"S": "nuevo"},
         "Score": {"N": str(lead.get("score", 3))},
