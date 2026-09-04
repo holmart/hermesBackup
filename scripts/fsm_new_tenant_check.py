@@ -57,6 +57,7 @@ def scan_recent_tenants():
 def format_tenant(item):
     name = item.get("name", {}).get("S", "(sin nombre)")
     email = item.get("email", {}).get("S", "(sin email)")
+    phone = item.get("phone", {}).get("S", "")
     vertical = item.get("vertical", {}).get("S", "(sin vertical)")
     plan = item.get("plan", {}).get("S", "trial")
     service_mode = item.get("serviceMode", {}).get("S", "field")
@@ -69,12 +70,14 @@ def format_tenant(item):
 
     mode_label = "Campo" if service_mode == "field" else "Local (In-House)"
     utm_str = f"{utm_source}/{utm_medium}" if utm_source else "directo"
+    phone_str = phone if phone else "(no registrado)"
 
     lines = [
         "🆕 **Nuevo Tenant Registrado**",
         "",
         f"📋 **Empresa:** {name or '(pendiente onboarding)'}",
         f"📧 **Email:** {email}",
+        f"📱 **Teléfono:** {phone_str}",
         f"🏢 **Vertical:** {vertical or '(pendiente)'}",
         f"🔧 **Modo:** {mode_label}",
         f"💳 **Plan:** {plan}",
