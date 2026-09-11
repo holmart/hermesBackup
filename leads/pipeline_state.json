@@ -162,7 +162,7 @@
   "query_offset": 3,
   "verticals": {
     "fumigacion": {
-      "city_index": 12,
+      "city_index": 14,
       "known_domains": {
         "duckduckgo.com": "2026-08-16T15:52:37.891582+00:00",
         "fumycontrol.co": "2026-08-16T15:52:37.891582+00:00",
@@ -530,7 +530,28 @@
         "imsalud.gov.co": "2026-09-10T04:03:40.649698+00:00",
         "fundamentamosalimentos.com.co": "2026-09-10T04:03:40.649698+00:00",
         "ecolimpieza.com.co": "2026-09-10T04:03:40.649698+00:00",
-        "pristino.com.co": "2026-09-10T04:03:40.649698+00:00"
+        "pristino.com.co": "2026-09-10T04:03:40.649698+00:00",
+        "hospitalneiva.gov.co": "2026-09-11T04:03:21.913188+00:00",
+        "chsmx.com": "2026-09-11T04:03:21.913188+00:00",
+        "rednoticiashuila.com": "2026-09-11T04:03:21.913188+00:00",
+        "snies.mineducacion.gov.co": "2026-09-11T04:03:21.913188+00:00",
+        "lavozdelaregion.co": "2026-09-11T04:03:21.913188+00:00",
+        "hjdoblekhuila.com": "2026-09-11T04:03:21.913188+00:00",
+        "rincondeportivo.com.co": "2026-09-11T04:03:21.913188+00:00",
+        "prod.fundacionexe.org.co": "2026-09-11T04:03:21.913188+00:00",
+        "telesai.com.co": "2026-09-11T04:03:21.913188+00:00",
+        "colombianadefumigaciones.com": "2026-09-11T04:03:21.913188+00:00",
+        "topfumigaciones.com": "2026-09-11T04:03:21.913188+00:00",
+        "proveedores.com": "2026-09-11T04:03:21.913188+00:00",
+        "fumigaciones-gdl.com": "2026-09-11T04:03:21.913188+00:00",
+        "mineducacion.gov.co": "2026-09-11T04:03:21.913188+00:00",
+        "armenia.gov.co": "2026-09-11T04:03:21.913188+00:00",
+        "quindionoticias.com": "2026-09-11T04:03:21.913188+00:00",
+        "elquindiano.com": "2026-09-11T04:03:21.913188+00:00",
+        "pilasarmenia.com": "2026-09-11T04:03:21.913188+00:00",
+        "notiulti.com": "2026-09-11T04:03:21.913188+00:00",
+        "redsaludarmenia.gov.co": "2026-09-11T04:03:21.913188+00:00",
+        "fumigacionesjuancontrol.com": "2026-09-11T04:03:21.913188+00:00"
       },
       "query_offset": 0
     },
@@ -875,7 +896,7 @@
       "query_offset": 0
     },
     "electrico": {
-      "city_index": 1,
+      "city_index": 4,
       "known_domains": {
         "santanaingenieria.com": "2026-08-18T14:04:04.308320+00:00",
         "cieenergy.com": "2026-08-18T14:04:04.308320+00:00",
@@ -1256,12 +1277,14 @@
         "rtlcertifications.com": "2026-09-10T04:43:21.609435+00:00",
         "rccertinspecciones.co": "2026-09-10T04:43:21.609435+00:00",
         "mib-ingenieriaelectrica.com": "2026-09-10T04:43:21.609435+00:00",
-        "ingenieriaarango.com": "2026-09-10T04:43:21.609435+00:00"
+        "ingenieriaarango.com": "2026-09-10T04:43:21.609435+00:00",
+        "tecnofase.com": "2026-09-11T04:53:34.909865+00:00",
+        "energecol.com.co": "2026-09-11T04:53:34.909865+00:00"
       },
       "query_offset": 0
     },
     "elevadores": {
-      "city_index": 9,
+      "city_index": 12,
       "known_domains": {
         "serbalelevadores.com": "2026-08-25T08:40:45.494100+00:00",
         "tkelevator.com": "2026-08-25T08:40:45.494100+00:00",
@@ -1554,12 +1577,15 @@
         "certificacionescch.com": "2026-09-10T05:03:32.595439+00:00",
         "ceformar.edu.co": "2026-09-10T05:03:32.595439+00:00",
         "hm-maquinaria.com": "2026-09-10T05:03:32.595439+00:00",
-        "ocgascensores.co": "2026-09-10T05:03:32.595439+00:00"
+        "ocgascensores.co": "2026-09-10T05:03:32.595439+00:00",
+        "herramientassinmuros.com": "2026-09-11T05:13:25.763542+00:00",
+        "alfering.com": "2026-09-11T05:13:25.763542+00:00",
+        "operincsas.com": "2026-09-11T05:13:25.763542+00:00"
       },
       "query_offset": 0
     },
     "gas": {
-      "city_index": 11,
+      "city_index": 13,
       "known_domains": {
         "aaaingenieriadegas.com": "2026-08-25T09:02:04.551888+00:00",
         "asistec.com.co": "2026-08-25T09:02:04.551888+00:00",
@@ -1845,12 +1871,22 @@
         "encuentra24.com": "2026-09-10T06:03:21.051524+00:00",
         "es.scribd.com": "2026-09-10T06:03:21.051524+00:00",
         "gaspipesolutions.com": "2026-09-10T06:03:21.051524+00:00",
-        "thermalsystems.com.co": "2026-09-10T06:03:21.051524+00:00"
+        "thermalsystems.com.co": "2026-09-10T06:03:21.051524+00:00",
+        "plomerialopez.com": "2026-09-11T06:02:47.727206+00:00",
+        "servimas.co": "2026-09-11T06:02:47.727206+00:00",
+        "mlfcolombiasas.com.co": "2026-09-11T06:02:47.727206+00:00",
+        "tecnicalderos.com": "2026-09-11T06:02:47.727206+00:00",
+        "plomeriaellago.com": "2026-09-11T06:02:47.727206+00:00",
+        "servinec.com": "2026-09-11T06:02:47.727206+00:00",
+        "seindsa.com": "2026-09-11T06:02:47.727206+00:00",
+        "disgesa.co": "2026-09-11T06:02:47.727206+00:00",
+        "tecnomedics.com.co": "2026-09-11T06:02:47.727206+00:00",
+        "comercializadorainsumedic.com.co": "2026-09-11T06:02:47.727206+00:00"
       },
       "query_offset": 0
     },
     "limpieza": {
-      "city_index": 2,
+      "city_index": 3,
       "known_domains": {
         "misionservir.com": "2026-08-25T15:03:35.335679+00:00",
         "limpio.com.co": "2026-08-25T15:03:35.335679+00:00",
@@ -2165,12 +2201,28 @@
         "bioxcontrolfumigaciones.com": "2026-09-10T05:23:02.632800+00:00",
         "purify.com.co": "2026-09-10T05:23:02.632800+00:00",
         "zumasol.com": "2026-09-10T05:23:02.632800+00:00",
-        "colimpia.com": "2026-09-10T05:23:02.632800+00:00"
+        "colimpia.com": "2026-09-10T05:23:02.632800+00:00",
+        "tankcare.com.co": "2026-09-11T05:22:25.150792+00:00",
+        "aceis.com.co": "2026-09-11T05:22:25.150792+00:00",
+        "descadministradores.com": "2026-09-11T05:22:25.150792+00:00",
+        "grupotesco.com": "2026-09-11T05:22:25.150792+00:00",
+        "co.todosnegocios.com": "2026-09-11T05:22:25.150792+00:00",
+        "veringenieriasas.com": "2026-09-11T05:22:25.150792+00:00",
+        "acuatank.com": "2026-09-11T05:22:25.150792+00:00",
+        "fuseincol-fumigacionesycontrolplagas.webnode.com.co": "2026-09-11T05:22:25.150792+00:00",
+        "fernandezydelgado.com": "2026-09-11T05:22:25.150792+00:00",
+        "fachadascali.com": "2026-09-11T05:22:25.150792+00:00",
+        "multiservicioslp.com": "2026-09-11T05:22:25.150792+00:00",
+        "limpiaexpresscali.com": "2026-09-11T05:22:25.150792+00:00",
+        "servintegrales360.com": "2026-09-11T05:22:25.150792+00:00",
+        "alphalimpieza.com": "2026-09-11T05:22:25.150792+00:00",
+        "kgservicespro.com": "2026-09-11T05:22:25.150792+00:00",
+        "lhgad.com": "2026-09-11T05:22:25.150792+00:00"
       },
       "query_offset": 0
     },
     "soporte-tecnico": {
-      "city_index": 1,
+      "city_index": 2,
       "known_domains": {
         "soporteogo.com": "2026-08-25T15:39:14.294009+00:00",
         "makrosoftware.com": "2026-08-25T15:39:14.294009+00:00",
@@ -2536,12 +2588,37 @@
         "besoftware.co": "2026-09-10T05:43:03.765839+00:00",
         "indactec.com": "2026-09-10T05:43:03.765839+00:00",
         "serotech.com.co": "2026-09-10T05:43:03.765839+00:00",
-        "solucionpc.co": "2026-09-10T05:43:03.765839+00:00"
+        "solucionpc.co": "2026-09-10T05:43:03.765839+00:00",
+        "systemmas.org": "2026-09-11T05:43:06.864938+00:00",
+        "mtec.com.co": "2026-09-11T05:43:06.864938+00:00",
+        "digishopseguridad.com": "2026-09-11T05:43:06.864938+00:00",
+        "asistecsas.com": "2026-09-11T05:43:06.864938+00:00",
+        "imporcom.net": "2026-09-11T05:43:06.864938+00:00",
+        "maxadnsas.my.canva.site": "2026-09-11T05:43:06.864938+00:00",
+        "compuxtreme.com.co": "2026-09-11T05:43:06.864938+00:00",
+        "mantenimientoyreparaciondepc.com": "2026-09-11T05:43:06.864938+00:00",
+        "ariassystems.com": "2026-09-11T05:43:06.864938+00:00",
+        "madrigal.co": "2026-09-11T05:43:06.864938+00:00",
+        "reparacionesjd.com.co": "2026-09-11T05:43:06.864938+00:00",
+        "doctorportatilypc.com": "2026-09-11T05:43:06.864938+00:00",
+        "impulsogamer.com": "2026-09-11T05:43:06.864938+00:00",
+        "tecnipc.com.co": "2026-09-11T05:43:06.864938+00:00",
+        "comsoport.com": "2026-09-11T05:43:06.864938+00:00",
+        "reparaciondecomputadoresmedellin.com.co": "2026-09-11T05:43:06.864938+00:00",
+        "binarioit.co": "2026-09-11T05:43:06.864938+00:00",
+        "mercomputo.com": "2026-09-11T05:43:06.864938+00:00",
+        "compueasys.com": "2026-09-11T05:43:06.864938+00:00",
+        "cybeletecnologia.com": "2026-09-11T05:43:06.864938+00:00",
+        "reparacioncomputadores.com.co": "2026-09-11T05:43:06.864938+00:00",
+        "printermedellin.com": "2026-09-11T05:43:06.864938+00:00",
+        "reparacion.fotocopiadorasenmedellin.com": "2026-09-11T05:43:06.864938+00:00",
+        "printingsolutions.com.co": "2026-09-11T05:43:06.864938+00:00",
+        "citas.printermedellin.com": "2026-09-11T05:43:06.864938+00:00"
       },
       "query_offset": 0
     },
     "extintores": {
-      "city_index": 9,
+      "city_index": 10,
       "known_domains": {
         "serviexpress.com.co": "2026-08-25T16:33:35.341304+00:00",
         "bitool.co": "2026-08-25T16:33:35.341304+00:00",
@@ -2838,12 +2915,25 @@
         "extranet.cortolima.gov.co": "2026-09-10T06:23:43.793307+00:00",
         "cortolima.gov.co": "2026-09-10T06:23:43.793307+00:00",
         "imdri.gov.co": "2026-09-10T06:23:43.793307+00:00",
-        "ecosdelcombeima.com": "2026-09-10T06:23:43.793307+00:00"
+        "ecosdelcombeima.com": "2026-09-10T06:23:43.793307+00:00",
+        "ingenieriasaicof.com": "2026-09-11T06:25:01.224386+00:00",
+        "firesystemec.com": "2026-09-11T06:25:01.224386+00:00",
+        "infobel.com": "2026-09-11T06:25:01.224386+00:00",
+        "sertegasllano.wixsite.com": "2026-09-11T06:25:01.224386+00:00",
+        "securitag.com.co": "2026-09-11T06:25:01.224386+00:00",
+        "sisp.com.co": "2026-09-11T06:25:01.224386+00:00",
+        "absenalizacion.com": "2026-09-11T06:25:01.224386+00:00",
+        "artesgraficasintegradas.com": "2026-09-11T06:25:01.224386+00:00",
+        "mdc.org.co": "2026-09-11T06:25:01.224386+00:00",
+        "scribd.com": "2026-09-11T06:25:01.224386+00:00",
+        "cdn1.get-qr.com": "2026-09-11T06:25:01.224386+00:00",
+        "mapfre.com.co": "2026-09-11T06:25:01.224386+00:00",
+        "ingeici.com": "2026-09-11T06:25:01.224386+00:00"
       },
       "query_offset": 0
     },
     "telecomunicaciones": {
-      "city_index": 10,
+      "city_index": 11,
       "known_domains": {
         "gigafibra.com.co": "2026-08-25T17:03:22.934976+00:00",
         "zafirotelecomunicaciones.com": "2026-08-25T17:03:22.934976+00:00",
@@ -3112,12 +3202,22 @@
         "cableaereomanizales.gov.co": "2026-09-10T06:53:36.257389+00:00",
         "movistar.com.co": "2026-09-10T06:53:36.257389+00:00",
         "colombiabound.com": "2026-09-10T06:53:36.257389+00:00",
-        "legontelecomunicaciones.com": "2026-09-10T06:53:36.257389+00:00"
+        "legontelecomunicaciones.com": "2026-09-10T06:53:36.257389+00:00",
+        "solnet.com.co": "2026-09-11T06:41:54.920106+00:00",
+        "logitel.co": "2026-09-11T06:41:54.920106+00:00",
+        "domitecno.com.co": "2026-09-11T06:41:54.920106+00:00",
+        "ismd.com.co": "2026-09-11T06:41:54.920106+00:00",
+        "southernintels.com": "2026-09-11T06:41:54.920106+00:00",
+        "gruposergel.com": "2026-09-11T06:41:54.920106+00:00",
+        "soluredys.com": "2026-09-11T06:41:54.920106+00:00",
+        "soldicassas.com": "2026-09-11T06:41:54.920106+00:00",
+        "lograntec.com": "2026-09-11T06:41:54.920106+00:00",
+        "infobel.com": "2026-09-11T06:41:54.920106+00:00"
       },
       "query_offset": 0
     },
     "biomedica": {
-      "city_index": 6,
+      "city_index": 9,
       "known_domains": {
         "medicalmb.com.co": "2026-08-25T17:33:20.216746+00:00",
         "ditamed.co": "2026-08-25T17:33:20.216746+00:00",
@@ -3426,12 +3526,19 @@
         "olimpuslab.com": "2026-09-10T07:14:00.936877+00:00",
         "cmbuenosaires.com": "2026-09-10T07:14:00.936877+00:00",
         "biocal.com.co": "2026-09-10T07:14:00.936877+00:00",
-        "ctev.unicartagena.edu.co": "2026-09-10T07:14:00.936877+00:00"
+        "ctev.unicartagena.edu.co": "2026-09-10T07:14:00.936877+00:00",
+        "medic-enfer.com": "2026-09-11T07:14:36.201042+00:00",
+        "calculaser.com": "2026-09-11T07:14:36.201042+00:00",
+        "anedbioingenieria.com.co": "2026-09-11T07:14:36.201042+00:00",
+        "sabtechnology.co": "2026-09-11T07:14:36.201042+00:00",
+        "medmetrologiacolombia.com": "2026-09-11T07:14:36.201042+00:00",
+        "cienciasnaturales.unibague.edu.co": "2026-09-11T07:14:36.201042+00:00",
+        "somosmedicinaocupacionalylaboral.com": "2026-09-11T07:14:36.201042+00:00"
       },
       "query_offset": 0
     },
     "cadena-de-frio": {
-      "city_index": 14,
+      "city_index": 2,
       "known_domains": {
         "cuartosfriosbogota.com.co": "2026-08-25T18:04:09.588333+00:00",
         "refripanelcuartosfrios.com": "2026-08-25T18:04:09.588333+00:00",
@@ -3662,7 +3769,9 @@
         "zonafrancaindustrialdesantamarta.com.co": "2026-09-09T07:33:39.704193+00:00",
         "tecnogastromag.com": "2026-09-09T07:33:39.704193+00:00",
         "ainecol.com": "2026-09-10T07:33:35.299005+00:00",
-        "endaires.com": "2026-09-10T07:33:35.299005+00:00"
+        "endaires.com": "2026-09-10T07:33:35.299005+00:00",
+        "reddistribuidora.com": "2026-09-11T07:33:26.418979+00:00",
+        "soportebogota.com.co": "2026-09-11T07:33:26.418979+00:00"
       },
       "query_offset": 0
     }
