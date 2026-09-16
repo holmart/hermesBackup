@@ -17,3 +17,5 @@
 § FSM backend ofusca telefonos ANTES de guardar en DynamoDB/Cognito. Formato: +573****6311. Aplica a tenants, customers, technicians-metadata. No se puede recuperar completo desde AWS. Si se necesita en reportes, hay que modificar backend o enviar alerta antes de ofuscar.
 §
 FSM backend ofusca telefonos ANTES de guardar en DynamoDB/Cognito. Formato: +573****6311. Aplica a tenants, customers, technicians-metadata. No se puede recuperar completo desde AWS. Si se necesita en reportes, hay que modificar backend o enviar alerta antes de ofuscar.
+§
+§ Diagnóstico pipeline prospecting: hay DOBLE sistema de cron. Los pipelines de prospecting corren vía system crontab (`crontab -l`), NO vía `cronjob_manage list`. Si el usuario pregunta "por qué no se buscan leads", verificar AMBOS sistemas. Logs en `~/.hermes/leads/cron_output.log` y `~/.hermes/leads/pipeline.log`. Los reportes Telegram se envían vía curl directo a la API de Telegram, no por gateway Hermes. Horarios: 04:00-07:20 UTC (11 PM - 2:20 AM Colombia). Si no ve reportes, probablemente llegaron de noche y se perdieron en el chat.
